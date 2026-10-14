@@ -1,5 +1,6 @@
 
 import re
+import logging
 from datetime import datetime, timezone
 from urllib.parse import urlparse
 
@@ -16,9 +17,16 @@ from flask_login import login_required, current_user
 
 from extensions import db
 from models import Article, Category
-
+from models.contact_message import ContactMessage
 
 admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
+logger = logging.getLogger(__name__)
+
+
+def _require_admin():
+    """Allow only authenticated administrators to manage sensitive actions."""
+    if not current_user.is_authenticated or current_user.role != "admin":
+        abort(403)
 
 
 def _make_slug(value):
@@ -92,10 +100,7 @@ def _save_article(article):
     category_value = request.form.get("category_id", "").strip()
 
     if not title_en or not summary_en or not body_en:
-        flash(
-            "English title, summary, and body are required.",
-            "danger",
-        )
+        flash("English title, summary, and body are required.", "danger")
         return False
 
     if len(title_en) > 220 or len(title_te) > 220:
@@ -142,10 +147,7 @@ def _save_article(article):
     article.image_url = image_url or None
 
     requested_slug = slug_input or title_en
-    article.slug = _unique_slug(
-        requested_slug,
-        article_id=article.id,
-    )
+    article.slug = _unique_slug(requested_slug, article_id=article.id)
 
     if article.id is None:
         article.author_id = current_user.id
@@ -157,11 +159,14 @@ def _save_article(article):
         db.session.commit()
     except Exception:
         db.session.rollback()
+        logger.exception("Could not save article.")
         flash("Could not save the article. Check the server log.", "danger")
         return False
 
     return True
 
+
+# -------------------- ADMIN DASHBOARD --------------------
 
 @admin_bp.route("/")
 @login_required
@@ -172,28 +177,67 @@ def dashboard():
         "published": Article.query.filter_by(status="published").count(),
     }
 
-    articles = (
-        Article.query
-        .order_by(Article.id.desc())
-        .limit(8)
-        .all()
-    )
-
+    articles = Article.query.order_by(Article.id.desc()).limit(8).all()
     category_count = Category.query.count()
+    unread_messages = ContactMessage.query.filter_by(is_read=False).count()
 
     return render_template(
         "admin/dashboard.html",
         counts=counts,
         articles=articles,
         category_count=category_count,
+        unread_messages=unread_messages,
     )
 
+
+# -------------------- CONTACT MESSAGES --------------------
+
+@admin_bp.route("/messages")
+@login_required
+def contact_messages():
+    _require_admin()
+
+    messages = ContactMessage.query.order_by(
+        ContactMessage.created_at.desc()
+    ).all()
+
+    unread_count = ContactMessage.query.filter_by(is_read=False).count()
+
+    return render_template(
+        "admin/contact_messages.html",
+        messages=messages,
+        unread_count=unread_count,
+    )
+
+
+@admin_bp.route("/messages/<int:message_id>/read", methods=["POST"])
+@login_required
+def mark_message_read(message_id):
+    _require_admin()
+
+    message = db.session.get(ContactMessage, message_id)
+    if message is None:
+        abort(404)
+
+    message.is_read = True
+
+    try:
+        db.session.commit()
+        flash("Message marked as read.", "success")
+    except Exception:
+        db.session.rollback()
+        logger.exception("Could not mark contact message as read.")
+        flash("Could not update the message.", "danger")
+
+    return redirect(url_for("admin.contact_messages"))
+
+
+# -------------------- ARTICLE MANAGEMENT --------------------
 
 @admin_bp.route("/articles")
 @login_required
 def articles():
     status = request.args.get("status", "").strip()
-
     query = Article.query
 
     if status in {"draft", "published"}:
@@ -218,35 +262,27 @@ def new_article():
             flash("Article saved as a draft.", "success")
             return redirect(url_for("admin.articles", status="draft"))
 
-        return _article_form(article=None)
+        return _article_form(article=article)
 
     return _article_form()
 
 
-@admin_bp.route(
-    "/articles/<int:article_id>/edit",
-    methods=["GET", "POST"],
-)
+@admin_bp.route("/articles/<int:article_id>/edit", methods=["GET", "POST"])
 @login_required
 def edit_article(article_id):
     article = db.get_or_404(Article, article_id)
 
-    if request.method == "POST":
-        if _save_article(article):
-            flash("Article updated successfully.", "success")
-            return redirect(url_for("admin.articles"))
+    if request.method == "POST" and _save_article(article):
+        flash("Article updated successfully.", "success")
+        return redirect(url_for("admin.articles"))
 
     return _article_form(article=article)
 
 
-@admin_bp.route(
-    "/articles/<int:article_id>/publish",
-    methods=["POST"],
-)
+@admin_bp.route("/articles/<int:article_id>/publish", methods=["POST"])
 @login_required
 def publish_article(article_id):
-    if current_user.role != "admin":
-        abort(403)
+    _require_admin()
 
     article = db.get_or_404(Article, article_id)
 
@@ -259,19 +295,16 @@ def publish_article(article_id):
             flash("Article published successfully.", "success")
         except Exception:
             db.session.rollback()
+            logger.exception("Could not publish article.")
             flash("Could not publish the article.", "danger")
 
     return redirect(url_for("admin.articles"))
 
 
-@admin_bp.route(
-    "/articles/<int:article_id>/unpublish",
-    methods=["POST"],
-)
+@admin_bp.route("/articles/<int:article_id>/unpublish", methods=["POST"])
 @login_required
 def unpublish_article(article_id):
-    if current_user.role != "admin":
-        abort(403)
+    _require_admin()
 
     article = db.get_or_404(Article, article_id)
     article.status = "draft"
@@ -282,19 +315,16 @@ def unpublish_article(article_id):
         flash("Article moved back to drafts.", "success")
     except Exception:
         db.session.rollback()
+        logger.exception("Could not unpublish article.")
         flash("Could not unpublish the article.", "danger")
 
     return redirect(url_for("admin.articles"))
 
 
-@admin_bp.route(
-    "/articles/<int:article_id>/delete",
-    methods=["POST"],
-)
+@admin_bp.route("/articles/<int:article_id>/delete", methods=["POST"])
 @login_required
 def delete_article(article_id):
-    if current_user.role != "admin":
-        abort(403)
+    _require_admin()
 
     article = db.get_or_404(Article, article_id)
 
@@ -304,6 +334,7 @@ def delete_article(article_id):
         flash("Article deleted successfully.", "success")
     except Exception:
         db.session.rollback()
+        logger.exception("Could not delete article.")
         flash("Could not delete the article.", "danger")
 
     return redirect(url_for("admin.articles"))
