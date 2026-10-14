@@ -1,0 +1,388 @@
+
+/* ======================================
+   VSTV6 PROFESSIONAL CENTERED LOGIN
+   ====================================== */
+
+.vstv-login {
+    --navy: #101b30;
+    --red: #df1e36;
+    --muted: #718096;
+
+    position: relative;
+    isolation: isolate;
+
+    width: 100%;
+    min-height: 680px;
+    padding: 45px 18px 65px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background:
+        radial-gradient(
+            circle at 12% 15%,
+            rgba(223, 30, 54, 0.07),
+            transparent 34%
+        ),
+        radial-gradient(
+            circle at 88% 85%,
+            rgba(40, 74, 125, 0.08),
+            transparent 35%
+        ),
+        #f3f5f9;
+
+    box-sizing: border-box;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+.vstv-login *,
+.vstv-login *::before,
+.vstv-login *::after {
+    box-sizing: border-box;
+}
+
+/* Centered login card */
+
+.vstv-login .login-card {
+    width: 100%;
+    max-width: 420px;
+    margin: 0 auto;
+    padding: 34px 36px 28px;
+
+    background: #ffffff;
+    border: 1px solid #e3e8f0;
+    border-radius: 18px;
+
+    box-shadow:
+        0 22px 60px rgba(16, 27, 48, 0.10),
+        0 3px 10px rgba(16, 27, 48, 0.025);
+}
+
+/* Logo */
+
+.vstv-login .login-brand {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 27px;
+}
+
+.vstv-login img.login-logo {
+    display: block;
+    width: 132px !important;
+    height: 72px !important;
+    max-width: 100% !important;
+    max-height: 72px !important;
+    margin: 0 auto 10px;
+    object-fit: contain !important;
+}
+
+.vstv-login .brand-caption {
+    color: var(--navy);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 2px;
+    text-align: center;
+}
+
+/* Heading */
+
+.vstv-login .login-heading {
+    margin-bottom: 25px;
+}
+
+.vstv-login .login-eyebrow {
+    color: var(--red);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 1.7px;
+}
+
+.vstv-login .login-heading h1 {
+    margin: 10px 0;
+    color: var(--navy);
+    font-size: 32px;
+    font-weight: 800;
+    line-height: 1.25;
+    letter-spacing: -0.7px;
+}
+
+.vstv-login .login-heading h1 span {
+    color: var(--red);
+}
+
+.vstv-login .login-heading p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.8;
+}
+
+/* Form */
+
+.vstv-login .login-form {
+    display: flex;
+    flex-direction: column;
+    gap: 19px;
+    width: 100%;
+}
+
+.vstv-login .form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+    min-width: 0;
+}
+
+.vstv-login .form-field label {
+    color: #27364d;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.vstv-login .form-field input {
+    display: block;
+    width: 100% !important;
+    height: 49px;
+    min-width: 0;
+    padding: 0 14px;
+
+    color: var(--navy);
+    background: #fbfcfe;
+
+    border: 1px solid #dce3ed;
+    border-radius: 8px;
+    outline: none;
+
+    font-family: inherit;
+    font-size: 13px;
+
+    transition: border-color .2s, box-shadow .2s;
+}
+
+.vstv-login .form-field input::placeholder {
+    color: #9ba5b4;
+}
+
+.vstv-login .form-field input:focus {
+    background: #ffffff;
+    border-color: var(--red);
+    box-shadow: 0 0 0 3px rgba(223, 30, 54, 0.09);
+}
+
+/* Password visibility */
+
+.vstv-login .password-wrap {
+    position: relative;
+    width: 100%;
+    min-width: 0;
+}
+
+.vstv-login .password-wrap input {
+    padding-right: 65px;
+}
+
+.vstv-login .password-toggle {
+    position: absolute;
+    top: 50%;
+    right: 10px;
+    transform: translateY(-50%);
+
+    padding: 6px;
+    color: #617087;
+    background: transparent;
+    border: none;
+
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.vstv-login .password-toggle:hover {
+    color: var(--red);
+}
+
+/* Sign-in button */
+
+.vstv-login .login-submit {
+    width: 100%;
+    min-height: 50px;
+    margin-top: 3px;
+    padding: 0 16px;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+
+    color: #ffffff;
+    background: linear-gradient(110deg, #e3263e, #cf1933);
+    border: none;
+    border-radius: 8px;
+
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 750;
+    cursor: pointer;
+
+    box-shadow: 0 7px 16px rgba(223, 30, 54, 0.17);
+    transition: background .2s, transform .2s;
+}
+
+.vstv-login .login-submit:hover {
+    background: #b9152d;
+    transform: translateY(-1px);
+}
+
+.vstv-login .login-submit:active {
+    transform: translateY(0);
+}
+
+/* Feedback messages */
+
+.vstv-login .login-messages {
+    margin-bottom: 18px;
+}
+
+.vstv-login .login-message {
+    margin-bottom: 8px;
+    padding: 11px 12px;
+
+    color: #a51d30;
+    background: #fff0f2;
+    border: 1px solid #ffd0d6;
+    border-radius: 8px;
+
+    font-size: 12px;
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+}
+
+.vstv-login .login-message.success {
+    color: #166534;
+    background: #f0fdf4;
+    border-color: #bbf7d0;
+}
+
+.vstv-login .login-message.warning {
+    color: #854d0e;
+    background: #fefce8;
+    border-color: #fde68a;
+}
+
+.vstv-login .login-message.info {
+    color: #1d4ed8;
+    background: #eff6ff;
+    border-color: #bfdbfe;
+}
+
+/* Security notice */
+
+.vstv-login .login-security {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    margin-top: 22px;
+
+    color: #7b8799;
+    font-size: 10px;
+    text-align: center;
+}
+
+.vstv-login .security-check {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 17px;
+    height: 17px;
+    flex-shrink: 0;
+
+    color: #16844b;
+    background: #eaf8ef;
+    border-radius: 50%;
+
+    font-size: 10px;
+    font-weight: 800;
+}
+
+/* Divider and homepage link */
+
+.vstv-login .login-divider {
+    height: 1px;
+    margin: 20px 0 17px;
+    background: #edf0f5;
+}
+
+.vstv-login .back-home {
+    display: block;
+    width: fit-content;
+    margin: 0 auto;
+
+    color: #53637a;
+    font-size: 12px;
+    text-decoration: none;
+}
+
+.vstv-login .back-home:hover {
+    color: var(--red);
+}
+
+/* Footer positioned inside login section */
+
+.vstv-login .login-footer {
+    position: absolute;
+    bottom: 19px;
+    left: 12px;
+    right: 12px;
+
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+
+    color: #8a94a5;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-align: center;
+}
+
+.vstv-login .login-footer span {
+    color: var(--red);
+}
+
+/* Mobile */
+
+@media (max-width: 480px) {
+    .vstv-login {
+        min-height: 0;
+        padding: 30px 14px 65px;
+    }
+
+    .vstv-login .login-card {
+        max-width: 400px;
+        padding: 27px 21px;
+        border-radius: 14px;
+    }
+
+    .vstv-login img.login-logo {
+        width: 118px !important;
+        height: 64px !important;
+        max-height: 64px !important;
+    }
+
+    .vstv-login .login-heading h1 {
+        font-size: 28px;
+    }
+
+    .vstv-login .login-footer {
+        bottom: 14px;
+        font-size: 8px;
+    }
+}

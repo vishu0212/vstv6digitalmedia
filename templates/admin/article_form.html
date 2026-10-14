@@ -1,0 +1,275 @@
+
+{% extends "base.html" %}
+
+{% block title %}
+{{ 'Edit Article' if article else 'Create News Draft' }} | VSTV6
+{% endblock %}
+
+{% block content %}
+<link rel="stylesheet"
+      href="{{ url_for('static', filename='css/admin-content.css') }}">
+
+<section class="news-admin-page editor-page">
+
+    <div class="news-page-header">
+        <div>
+            <span class="news-eyebrow">VSTV6 DIGITAL MEDIA</span>
+            <h1>{{ 'Edit Article' if article else 'Create News Draft' }}</h1>
+            <p>Prepare accurate, clear and well-structured news content.</p>
+        </div>
+
+        <a href="{{ url_for('admin.articles') }}"
+           class="news-secondary-btn">
+            ← Back to Articles
+        </a>
+    </div>
+
+    <div class="news-breadcrumb">
+        <a href="{{ url_for('admin.dashboard') }}">Dashboard</a>
+        <span>/</span>
+        <a href="{{ url_for('admin.articles') }}">Manage Articles</a>
+        <span>/</span>
+        <span>{{ 'Edit' if article else 'New Draft' }}</span>
+    </div>
+
+    <div class="editor-layout">
+        <main class="editor-main">
+            <form method="post" class="news-editor-form">
+                <input type="hidden"
+                       name="csrf_token"
+                       value="{{ csrf_token() }}">
+
+                <section class="editor-card">
+                    <div class="editor-card-heading">
+                        <span class="editor-step">01</span>
+                        <div>
+                            <h2>Article Headlines</h2>
+                            <p>Enter the headline and URL-friendly slug.</p>
+                        </div>
+                    </div>
+
+                    <div class="editor-field">
+                        <label for="title_en">English Headline <span>*</span></label>
+                        <input id="title_en"
+                               name="title_en"
+                               type="text"
+                               maxlength="220"
+                               required
+                               placeholder="Enter the news headline"
+                               value="{{ article.title_en if article else '' }}">
+                    </div>
+
+                    <div class="editor-field">
+                        <label for="title_te">Telugu Headline</label>
+                        <input id="title_te"
+                               name="title_te"
+                               type="text"
+                               maxlength="220"
+                               placeholder="తెలుగు వార్త శీర్షిక"
+                               value="{{ article.title_te or '' if article else '' }}">
+                    </div>
+
+                    <div class="editor-field">
+                        <label for="slug">Article URL Slug</label>
+                        <input id="slug"
+                               name="slug"
+                               type="text"
+                               maxlength="240"
+                               placeholder="Generated from headline if left empty"
+                               value="{{ article.slug if article else '' }}">
+                        <small>Use a short, readable URL. Leave blank to generate one automatically.</small>
+                    </div>
+                </section>
+
+                <section class="editor-card">
+                    <div class="editor-card-heading">
+                        <span class="editor-step">02</span>
+                        <div>
+                            <h2>Article Summary</h2>
+                            <p>Write a short introduction for readers.</p>
+                        </div>
+                    </div>
+
+                    <div class="editor-field">
+                        <label for="summary_en">English Summary <span>*</span></label>
+                        <textarea id="summary_en"
+                                  name="summary_en"
+                                  rows="3"
+                                  maxlength="500"
+                                  required
+                                  placeholder="Summarize the key news in a few sentences...">{{ article.summary_en if article else '' }}</textarea>
+                        <small>Maximum 500 characters.</small>
+                    </div>
+
+                    <div class="editor-field">
+                        <label for="summary_te">Telugu Summary</label>
+                        <textarea id="summary_te"
+                                  name="summary_te"
+                                  rows="3"
+                                  maxlength="500"
+                                  placeholder="వార్త యొక్క సంక్షిప్త వివరణ...">{{ article.summary_te or '' if article else '' }}</textarea>
+                    </div>
+                </section>
+
+                <section class="editor-card">
+                    <div class="editor-card-heading">
+                        <span class="editor-step">03</span>
+                        <div>
+                            <h2>News Content</h2>
+                            <p>Add the complete article in your chosen languages.</p>
+                        </div>
+                    </div>
+
+                    <div class="editor-field">
+                        <label for="body_en">English Article Body <span>*</span></label>
+                        <textarea id="body_en"
+                                  name="body_en"
+                                  rows="12"
+                                  required
+                                  placeholder="Write the complete article here...">{{ article.body_en if article else '' }}</textarea>
+                    </div>
+
+                    <div class="editor-field">
+                        <label for="body_te">Telugu Article Body</label>
+                        <textarea id="body_te"
+                                  name="body_te"
+                                  rows="12"
+                                  placeholder="పూర్తి వార్తను ఇక్కడ రాయండి...">{{ article.body_te or '' if article else '' }}</textarea>
+                    </div>
+                </section>
+
+                <section class="editor-card">
+                    <div class="editor-card-heading">
+                        <span class="editor-step">04</span>
+                        <div>
+                            <h2>Classification</h2>
+                            <p>Choose the language and category.</p>
+                        </div>
+                    </div>
+
+                    <div class="editor-two-columns">
+                        <div class="editor-field">
+                            <label for="language">Article Language <span>*</span></label>
+                            <select id="language" name="language" required>
+                                <option value="both"
+                                    {% if not article or article.language == 'both' %}selected{% endif %}>
+                                    Telugu + English
+                                </option>
+                                <option value="en"
+                                    {% if article and article.language == 'en' %}selected{% endif %}>
+                                    English
+                                </option>
+                                <option value="te"
+                                    {% if article and article.language == 'te' %}selected{% endif %}>
+                                    Telugu
+                                </option>
+                            </select>
+                        </div>
+
+                        <div class="editor-field">
+                            <label for="category_id">News Category <span>*</span></label>
+                            <select id="category_id" name="category_id" required>
+                                <option value="">Select a category</option>
+                                {% for c in categories %}
+                                <option value="{{ c.id }}"
+                                    {% if article and article.category_id == c.id %}selected{% endif %}>
+                                    {{ c.name_en }} / {{ c.name_te }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    {% if not categories %}
+                    <p class="editor-warning">
+                        No categories are available. Seed or create categories before saving an article.
+                    </p>
+                    {% endif %}
+                </section>
+
+                <section class="editor-card">
+                    <div class="editor-card-heading">
+                        <span class="editor-step">05</span>
+                        <div>
+                            <h2>Image & Source</h2>
+                            <p>Provide a featured image and source attribution.</p>
+                        </div>
+                    </div>
+
+                    <div class="editor-field">
+                        <label for="image_url">Featured Image HTTPS URL</label>
+                        <input id="image_url"
+                               name="image_url"
+                               type="url"
+                               placeholder="https://example.com/news-image.jpg"
+                               value="{{ article.image_url or '' if article else '' }}">
+                        <small>Use an image you own or are authorized to publish.</small>
+                    </div>
+
+                    <div class="editor-two-columns">
+                        <div class="editor-field">
+                            <label for="source_name">Source Name</label>
+                            <input id="source_name"
+                                   name="source_name"
+                                   type="text"
+                                   maxlength="200"
+                                   placeholder="News agency or publication"
+                                   value="{{ article.source_name or '' if article else '' }}">
+                        </div>
+
+                        <div class="editor-field">
+                            <label for="source_url">Source URL</label>
+                            <input id="source_url"
+                                   name="source_url"
+                                   type="url"
+                                   placeholder="https://example.com/source"
+                                   value="{{ article.source_url or '' if article else '' }}">
+                        </div>
+                    </div>
+                </section>
+
+                <div class="editor-submit-bar">
+                    <div>
+                        <strong>Save your work</strong>
+                        <small>
+                            {% if article and article.status == 'published' %}
+                            This article is currently published.
+                            {% else %}
+                            New articles are saved as drafts.
+                            {% endif %}
+                        </small>
+                    </div>
+
+                    <button class="news-primary-btn"
+                            type="submit">
+                        {{ 'Save Changes' if article else 'Save Draft' }}
+                    </button>
+                </div>
+            </form>
+        </main>
+
+        <aside class="editor-sidebar">
+            <div class="editor-help-card">
+                <div class="help-icon">✍️</div>
+                <h3>Publishing Checklist</h3>
+                <ul>
+                    <li>Verify the headline and facts.</li>
+                    <li>Check the article summary.</li>
+                    <li>Review spelling and language.</li>
+                    <li>Verify the source and image rights.</li>
+                    <li>Choose the correct category.</li>
+                </ul>
+            </div>
+
+            <div class="editor-help-card editor-status-card">
+                <h3>Article Status</h3>
+                <span class="news-status status-draft">
+                    <span class="status-dot"></span>
+                    {{ article.status|capitalize if article else 'Draft' }}
+                </span>
+                <p>Only an administrator can publish or unpublish articles.</p>
+            </div>
+        </aside>
+    </div>
+</section>
+{% endblock %}

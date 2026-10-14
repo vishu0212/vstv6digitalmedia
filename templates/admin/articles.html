@@ -1,0 +1,198 @@
+
+{% extends "base.html" %}
+
+{% block title %}Manage Articles | VSTV6 Digital Media{% endblock %}
+
+{% block content %}
+<link rel="stylesheet"
+      href="{{ url_for('static', filename='css/admin-content.css') }}">
+
+<section class="news-admin-page">
+    <div class="news-page-header">
+        <div>
+            <span class="news-eyebrow">VSTV6 DIGITAL MEDIA</span>
+            <h1>Manage Articles</h1>
+            <p>Manage, review and publish your newsroom content.</p>
+        </div>
+
+        <a class="news-primary-btn"
+           href="{{ url_for('admin.new_article') }}">
+            <span>＋</span> Create News Draft
+        </a>
+    </div>
+
+    <div class="news-breadcrumb">
+        <a href="{{ url_for('admin.dashboard') }}">Dashboard</a>
+        <span>/</span>
+        <span>Manage Articles</span>
+    </div>
+
+    <div class="news-filter-bar">
+        <div class="news-filter-tabs">
+            <a href="{{ url_for('admin.articles') }}"
+               class="{{ 'selected' if not selected_status else '' }}">
+                All Articles
+            </a>
+
+            <a href="{{ url_for('admin.articles', status='draft') }}"
+               class="{{ 'selected' if selected_status == 'draft' else '' }}">
+                Drafts
+            </a>
+
+            <a href="{{ url_for('admin.articles', status='published') }}"
+               class="{{ 'selected' if selected_status == 'published' else '' }}">
+                Published
+            </a>
+        </div>
+
+        <span class="news-total">
+            {{ articles|length }} article{{ '' if articles|length == 1 else 's' }}
+        </span>
+    </div>
+
+    <div class="news-table-card">
+        <div class="news-table-heading">
+            <div>
+                <h2>Newsroom Content</h2>
+                <p>Review article details and manage publication status.</p>
+            </div>
+        </div>
+
+        <div class="news-table-scroll">
+            <table class="news-table">
+                <thead>
+                    <tr>
+                        <th>Article</th>
+                        <th>Category</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for a in articles %}
+                    <tr>
+                        <td>
+                            <div class="news-article-cell">
+                                {% if a.image_url %}
+                                <img
+                                    class="news-thumbnail"
+                                    src="{{ a.image_url }}"
+                                    alt=""
+                                    loading="lazy"
+                                    referrerpolicy="no-referrer"
+                                    onerror="this.style.display='none'">
+                                {% else %}
+                                <div class="news-thumbnail-placeholder">📰</div>
+                                {% endif %}
+
+                                <div class="news-article-info">
+                                    <strong>{{ a.title_en }}</strong>
+                                    {% if a.title_te %}
+                                    <span>{{ a.title_te }}</span>
+                                    {% endif %}
+                                    <small>Article #{{ a.id }}</small>
+                                </div>
+                            </div>
+                        </td>
+
+                        <td>
+                            <span class="news-category">
+                                {{ a.category.name_en if a.category else 'Uncategorized' }}
+                            </span>
+                        </td>
+
+                        <td>
+                            <span class="news-status
+                                {{ 'status-published' if a.status == 'published' else 'status-draft' }}">
+                                <span class="status-dot"></span>
+                                {{ a.status|capitalize }}
+                            </span>
+                        </td>
+
+                        <td>
+                            <span class="news-date">
+                                {{ a.created_at.strftime('%d %b %Y') if a.created_at else '—' }}
+                            </span>
+                        </td>
+
+                        <td>
+                            <div class="news-row-actions">
+                                <a class="news-action-btn edit-action"
+                                   href="{{ url_for('admin.edit_article', article_id=a.id) }}">
+                                    Edit
+                                </a>
+
+                                {% if a.status == 'published' %}
+                                <a class="news-action-btn view-action"
+                                   href="{{ url_for('articles.detail', slug=a.slug) }}"
+                                   target="_blank"
+                                   rel="noopener noreferrer">
+                                    View
+                                </a>
+                                {% endif %}
+
+                                {% if current_user.role == 'admin' %}
+                                    {% if a.status == 'draft' %}
+                                    <form method="post"
+                                          action="{{ url_for('admin.publish_article', article_id=a.id) }}"
+                                          onsubmit="return confirm('Publish this article?')">
+                                        <input type="hidden"
+                                               name="csrf_token"
+                                               value="{{ csrf_token() }}">
+                                        <button class="news-action-btn publish-action"
+                                                type="submit">
+                                            Publish
+                                        </button>
+                                    </form>
+                                    {% else %}
+                                    <form method="post"
+                                          action="{{ url_for('admin.unpublish_article', article_id=a.id) }}"
+                                          onsubmit="return confirm('Move this article back to drafts?')">
+                                        <input type="hidden"
+                                               name="csrf_token"
+                                               value="{{ csrf_token() }}">
+                                        <button class="news-action-btn unpublish-action"
+                                                type="submit">
+                                            Unpublish
+                                        </button>
+                                    </form>
+                                    {% endif %}
+
+                                    <form method="post"
+                                          action="{{ url_for('admin.delete_article', article_id=a.id) }}"
+                                          onsubmit="return confirm('Delete this article permanently?')">
+                                        <input type="hidden"
+                                               name="csrf_token"
+                                               value="{{ csrf_token() }}">
+                                        <button class="news-action-btn delete-action"
+                                                type="submit">
+                                            Delete
+                                        </button>
+                                    </form>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5">
+                            <div class="news-empty-state">
+                                <div class="empty-icon">📰</div>
+                                <h3>No articles found</h3>
+                                <p>Create your first news draft to get started.</p>
+                                <a class="news-primary-btn"
+                                   href="{{ url_for('admin.new_article') }}">
+                                    Create News Draft
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+{% endblock %}

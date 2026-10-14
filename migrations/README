@@ -1,0 +1,1 @@
+Flask-Migrate / Alembic migration folder. Run `flask db upgrade` after installing dependencies and setting DATABASE_URL. For a new project, use `flask db init` only if this folder is absent; then `flask db migrate -m 'Initial schema'` and `flask db upgrade`. Commit generated migration revisions to version control.

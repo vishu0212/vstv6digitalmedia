@@ -1,0 +1,556 @@
+
+{% extends "base.html" %}
+
+{% block title %}Contact the Newsroom | VSTV6 Digital Media{% endblock %}
+
+{% block content %}
+
+<style>
+    .vstv-contact {
+        --contact-red: #e51d35;
+        --contact-navy: #0b1b31;
+        background: #f3f6fb;
+        color: #17243a;
+        padding: 55px 20px 75px;
+        min-height: 500px;
+    }
+
+    .vstv-contact *,
+    .vstv-contact *::before,
+    .vstv-contact *::after {
+        box-sizing: border-box;
+    }
+
+    .contact-container {
+        width: 100%;
+        max-width: 1120px;
+        margin: 0 auto;
+    }
+
+    .contact-heading {
+        text-align: center;
+        max-width: 760px;
+        margin: 0 auto 40px;
+    }
+
+    .contact-eyebrow {
+        display: inline-block;
+        color: var(--contact-red);
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        margin-bottom: 12px;
+    }
+
+    .contact-heading h1 {
+        font-size: clamp(30px, 5vw, 46px);
+        font-weight: 800;
+        line-height: 1.2;
+        margin: 0 0 15px;
+        color: var(--contact-navy);
+    }
+
+    .contact-heading h1 span {
+        color: var(--contact-red);
+    }
+
+    .contact-heading p {
+        color: #66748a;
+        font-size: 16px;
+        line-height: 1.8;
+        margin: 0;
+    }
+
+    .contact-grid {
+        display: grid;
+        grid-template-columns: 0.9fr 1.1fr;
+        gap: 26px;
+        align-items: stretch;
+    }
+
+    .contact-info-card,
+    .contact-form-card {
+        border-radius: 18px;
+        padding: 32px;
+        box-shadow: 0 12px 35px rgba(17, 35, 62, 0.07);
+    }
+
+    .contact-info-card {
+        color: #fff;
+        background: var(--contact-navy);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .contact-info-card::after {
+        content: "";
+        position: absolute;
+        width: 190px;
+        height: 190px;
+        right: -85px;
+        bottom: -90px;
+        border: 35px solid rgba(255, 255, 255, 0.045);
+        border-radius: 50%;
+        pointer-events: none;
+    }
+
+    .contact-info-card h2,
+    .contact-form-card h2 {
+        font-size: 25px;
+        font-weight: 800;
+        margin: 0 0 12px;
+    }
+
+    .contact-info-intro,
+    .contact-form-intro {
+        font-size: 14px;
+        line-height: 1.8;
+        margin: 0 0 28px;
+    }
+
+    .contact-info-intro {
+        color: #c5d0e0;
+    }
+
+    .contact-form-intro {
+        color: #718096;
+    }
+
+    .contact-detail {
+        display: flex;
+        align-items: flex-start;
+        gap: 14px;
+        margin: 25px 0;
+        position: relative;
+        z-index: 1;
+    }
+
+    .contact-detail-icon {
+        width: 46px;
+        height: 46px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-shrink: 0;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.10);
+        font-size: 21px;
+    }
+
+    .contact-detail h3 {
+        color: #fff;
+        font-size: 15px;
+        font-weight: 700;
+        margin: 2px 0 7px;
+    }
+
+    .contact-detail p,
+    .contact-detail a {
+        color: #c5d0e0;
+        font-size: 13px;
+        line-height: 1.8;
+        margin: 0;
+        overflow-wrap: anywhere;
+        text-decoration: none;
+    }
+
+    .contact-detail a:hover {
+        color: #fff;
+        text-decoration: underline;
+    }
+
+    .contact-social {
+        border-top: 1px solid rgba(255, 255, 255, 0.15);
+        margin-top: 30px;
+        padding-top: 22px;
+        position: relative;
+        z-index: 1;
+    }
+
+    .contact-social strong {
+        font-size: 14px;
+    }
+
+    .contact-social p {
+        color: #c5d0e0;
+        font-size: 13px;
+        line-height: 1.8;
+        margin: 8px 0 0;
+    }
+
+    .contact-form-card {
+        background: #fff;
+    }
+
+    .contact-form-card h2 {
+        color: var(--contact-navy);
+    }
+
+    .contact-alert {
+        border-radius: 9px;
+        padding: 13px 15px;
+        margin-bottom: 20px;
+        font-size: 14px;
+        line-height: 1.6;
+    }
+
+    .contact-alert-success {
+        color: #155724;
+        background: #d4edda;
+        border: 1px solid #c3e6cb;
+    }
+
+    .contact-alert-error {
+        color: #842029;
+        background: #f8d7da;
+        border: 1px solid #f5c2c7;
+    }
+
+    .contact-alert ul {
+        padding-left: 20px;
+        margin: 7px 0 0;
+    }
+
+    .contact-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+    }
+
+    .contact-field {
+        margin-bottom: 19px;
+        min-width: 0;
+    }
+
+    .contact-field label {
+        display: block;
+        font-size: 13px;
+        font-weight: 700;
+        color: #27364c;
+        margin-bottom: 8px;
+    }
+
+    .contact-field label span {
+        color: var(--contact-red);
+    }
+
+    .contact-field input,
+    .contact-field select,
+    .contact-field textarea {
+        display: block;
+        width: 100%;
+        min-width: 0;
+        border: 1px solid #dce3ed;
+        border-radius: 9px;
+        background: #fbfcfe;
+        color: #17243a;
+        padding: 13px 14px;
+        font-family: inherit;
+        font-size: 14px;
+        outline: none;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .contact-field input,
+    .contact-field select {
+        min-height: 47px;
+    }
+
+    .contact-field textarea {
+        min-height: 135px;
+        resize: vertical;
+    }
+
+    .contact-field input:focus,
+    .contact-field select:focus,
+    .contact-field textarea:focus {
+        border-color: var(--contact-red);
+        box-shadow: 0 0 0 3px rgba(229, 29, 53, 0.10);
+    }
+
+    .contact-submit {
+        width: 100%;
+        min-height: 49px;
+        border: none;
+        border-radius: 9px;
+        background: var(--contact-red);
+        color: #fff;
+        padding: 14px 20px;
+        font-family: inherit;
+        font-size: 15px;
+        font-weight: 800;
+        cursor: pointer;
+        transition: background 0.2s, transform 0.2s;
+    }
+
+    .contact-submit:hover {
+        background: #bd152a;
+        transform: translateY(-1px);
+    }
+
+    .contact-submit:focus-visible {
+        outline: 3px solid #17243a;
+        outline-offset: 3px;
+    }
+
+    .contact-privacy-note {
+        color: #7a8798;
+        font-size: 12px;
+        line-height: 1.7;
+        margin: 15px 0 0;
+        text-align: center;
+    }
+
+    @media (max-width: 800px) {
+        .vstv-contact {
+            padding: 38px 15px 50px;
+        }
+
+        .contact-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .contact-info-card,
+        .contact-form-card {
+            padding: 25px;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .contact-row {
+            grid-template-columns: 1fr;
+            gap: 0;
+        }
+
+        .contact-heading p {
+            font-size: 14px;
+        }
+
+        .contact-info-card h2,
+        .contact-form-card h2 {
+            font-size: 22px;
+        }
+    }
+</style>
+
+<section class="vstv-contact">
+    <div class="contact-container">
+
+        <!-- Page heading -->
+        <header class="contact-heading">
+            <span class="contact-eyebrow">
+                We're Here to Help
+            </span>
+
+            <h1>
+                Contact the <span>Newsroom</span>
+            </h1>
+
+            <p>
+                Have a news tip, correction, advertising enquiry,
+                or feedback? Reach out to VSTV6 Digital Media.
+                We value your voice and your contribution to responsible journalism.
+            </p>
+        </header>
+
+        <div class="contact-grid">
+
+            <!-- Contact information -->
+            <aside class="contact-info-card">
+                <h2>Get in Touch</h2>
+
+                <p class="contact-info-intro">
+                    Connect with our newsroom for news submissions,
+                    editorial corrections, advertising, and media partnerships.
+                </p>
+
+                <div class="contact-detail">
+                    <div class="contact-detail-icon" aria-hidden="true">
+                        ✉
+                    </div>
+
+                    <div>
+                        <h3>Email Address</h3>
+                        <p>
+                            <a href="mailto:YOUR_EMAIL@example.com">
+                                YOUR_EMAIL@example.com
+                            </a>
+                        </p>
+                    </div>
+                </div>
+
+                <div class="contact-detail">
+                    <div class="contact-detail-icon" aria-hidden="true">
+                        ☎
+                    </div>
+
+                    <div>
+                        <h3>Phone Number</h3>
+                        <p>
+                            <a href="tel:+910000000000">
+                                +91 XXXXX XXXXX
+                            </a>
+                        </p>
+                    </div>
+                </div>
+
+                <div class="contact-detail">
+                    <div class="contact-detail-icon" aria-hidden="true">
+                        📍
+                    </div>
+
+                    <div>
+                        <h3>Our Location</h3>
+                        <p>
+                            Bellampalli, Mancherial District,
+                            Telangana, India
+                        </p>
+                    </div>
+                </div>
+
+                <div class="contact-detail">
+                    <div class="contact-detail-icon" aria-hidden="true">
+                        📰
+                    </div>
+
+                    <div>
+                        <h3>News Tips & Corrections</h3>
+                        <p>
+                            Share relevant details, dates, and original
+                            source links to help our newsroom review your request.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="contact-social">
+                    <strong>VSTV6 Digital Media</strong>
+                    <p>
+                        Independent reporting. Clear facts.
+                        Responsible journalism.
+                    </p>
+                </div>
+            </aside>
+
+            <!-- Contact form -->
+            <div class="contact-form-card">
+                <h2>Send Us a Message</h2>
+
+                <p class="contact-form-intro">
+                    Complete the form below. Fields marked with
+                    an asterisk are required.
+                </p>
+
+                <!-- Flask flash messages -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div
+                                class="contact-alert {% if category == 'success' %}contact-alert-success{% else %}contact-alert-error{% endif %}"
+                                role="alert"
+                            >
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+
+                <form
+                    action="{{ url_for('contact.contact') }}"
+                    method="POST"
+                    accept-charset="UTF-8"
+                >
+                    <!-- Required when Flask-WTF CSRF protection is enabled -->
+                    {% if csrf_token is defined %}
+                        <input
+                            type="hidden"
+                            name="csrf_token"
+                            value="{{ csrf_token() }}"
+                        >
+                    {% endif %}
+
+                    <div class="contact-row">
+                        <div class="contact-field">
+                            <label for="contact-name">
+                                Full Name <span>*</span>
+                            </label>
+
+                            <input
+                                type="text"
+                                id="contact-name"
+                                name="name"
+                                placeholder="Enter your full name"
+                                maxlength="100"
+                                autocomplete="name"
+                                required
+                            >
+                        </div>
+
+                        <div class="contact-field">
+                            <label for="contact-email">
+                                Email Address <span>*</span>
+                            </label>
+
+                            <input
+                                type="email"
+                                id="contact-email"
+                                name="email"
+                                placeholder="you@example.com"
+                                maxlength="254"
+                                autocomplete="email"
+                                required
+                            >
+                        </div>
+                    </div>
+
+                    <div class="contact-field">
+                        <label for="contact-subject">
+                            Enquiry Type <span>*</span>
+                        </label>
+
+                        <select
+                            id="contact-subject"
+                            name="subject"
+                            required
+                        >
+                            <option value="">Select an enquiry type</option>
+                            <option value="News Tip">News Tip</option>
+                            <option value="Correction">News Correction</option>
+                            <option value="Advertisement">Advertisement</option>
+                            <option value="Media Partnership">Media Partnership</option>
+                            <option value="Feedback">Feedback</option>
+                            <option value="Technical Issue">Technical Issue</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+
+                    <div class="contact-field">
+                        <label for="contact-message">
+                            Your Message <span>*</span>
+                        </label>
+
+                        <textarea
+                            id="contact-message"
+                            name="message"
+                            placeholder="Write your message here..."
+                            maxlength="5000"
+                            required
+                        ></textarea>
+                    </div>
+
+                    <button type="submit" class="contact-submit">
+                        Send Message &rarr;
+                    </button>
+
+                    <p class="contact-privacy-note">
+                        Please do not include passwords, payment details,
+                        or other sensitive personal information.
+                    </p>
+                </form>
+            </div>
+
+        </div>
+    </div>
+</section>
+
+{% endblock %}

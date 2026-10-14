@@ -1,0 +1,132 @@
+
+{% extends "base.html" %}
+
+{% block title %}Staff Login | VSTV6 Digital Media{% endblock %}
+
+{% block content %}
+<link rel="stylesheet"
+      href="{{ url_for('static', filename='css/login.css') }}?v=5">
+
+<main class="vstv-login">
+    <section class="login-card">
+
+        <div class="login-brand">
+            <img
+                src="{{ url_for('static', filename='images/vstv6-logo.png') }}"
+                alt="VSTV6 Digital Media"
+                class="login-logo"
+            >
+            <span class="brand-caption">VSTV6 DIGITAL MEDIA</span>
+        </div>
+
+        <header class="login-heading">
+            <span class="login-eyebrow">NEWSROOM PORTAL</span>
+            <h1>Welcome back<span>.</span></h1>
+            <p>Sign in to manage news, articles and newsroom updates.</p>
+        </header>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="login-messages" role="alert">
+                    {% for category, message in messages %}
+                        <div class="login-message {{ category }}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST"
+              action="{{ url_for('auth.login') }}"
+              class="login-form">
+
+            {# CSRF token required by Flask-WTF CSRFProtect #}
+            <input type="hidden"
+                   name="csrf_token"
+                   value="{{ csrf_token() }}">
+
+            <div class="form-field">
+                <label for="email">Email address</label>
+                <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    placeholder="Enter your email address"
+                    autocomplete="username"
+                    required
+                >
+            </div>
+
+            <div class="form-field">
+                <label for="password">Password</label>
+
+                <div class="password-wrap">
+                    <input
+                        type="password"
+                        id="password"
+                        name="password"
+                        placeholder="Enter your password"
+                        autocomplete="current-password"
+                        required
+                    >
+
+                    <button type="button"
+                            class="password-toggle"
+                            id="passwordToggle"
+                            aria-label="Show password"
+                            aria-pressed="false">
+                        Show
+                    </button>
+                </div>
+            </div>
+
+            <button type="submit" class="login-submit">
+                <span>Sign in to newsroom</span>
+                <span aria-hidden="true">→</span>
+            </button>
+        </form>
+
+        <div class="login-security">
+            <span class="security-check">✓</span>
+            <span>Authorized newsroom staff only</span>
+        </div>
+
+        <div class="login-divider"></div>
+
+        <a href="{{ url_for('public.home') }}" class="back-home">
+            ← Back to VSTV6 homepage
+        </a>
+
+    </section>
+
+    <footer class="login-footer">
+        INDEPENDENT REPORTING <span>•</span>
+        CLEAR FACTS <span>•</span>
+        RESPONSIBLE JOURNALISM
+    </footer>
+</main>
+
+<script>
+(function () {
+    const password = document.getElementById("password");
+    const toggle = document.getElementById("passwordToggle");
+
+    if (!password || !toggle) return;
+
+    toggle.addEventListener("click", function () {
+        const visible = password.type === "password";
+
+        password.type = visible ? "text" : "password";
+        toggle.textContent = visible ? "Hide" : "Show";
+
+        toggle.setAttribute(
+            "aria-label",
+            visible ? "Hide password" : "Show password"
+        );
+
+        toggle.setAttribute("aria-pressed", String(visible));
+    });
+})();
+</script>
+{% endblock %}

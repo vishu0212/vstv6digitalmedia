@@ -1,0 +1,165 @@
+
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard | VSTV6{% endblock %}
+
+{% block content %}
+<link rel="stylesheet"
+      href="{{ url_for('static', filename='css/admin-dashboard.css') }}">
+
+<div class="admin-dashboard">
+
+    <!-- Dashboard navigation -->
+    <nav class="admin-nav" aria-label="Admin navigation">
+        <a href="{{ url_for('admin.dashboard') }}" class="nav-link active">
+            <span>🏠</span> Admin Dashboard
+        </a>
+
+        <a href="{{ url_for('admin.articles') }}" class="nav-link">
+            <span>📰</span> Manage Articles
+        </a>
+
+        <a href="{{ url_for('admin.new_article') }}"
+           class="nav-link create-news-btn">
+            <span>＋</span> Create a News Draft
+        </a>
+    </nav>
+
+    <!-- Dashboard header -->
+    <section class="admin-welcome">
+        <div>
+            <span class="eyebrow">VSTV6 DIGITAL MEDIA</span>
+            <h1>Newsroom Dashboard</h1>
+            <p>Manage your articles, review drafts, and publish news.</p>
+        </div>
+
+        <div class="admin-actions">
+            <a href="{{ url_for('public.home') }}"
+               class="admin-btn secondary-btn">
+                View Website
+            </a>
+
+            <form action="{{ url_for('auth.logout') }}" method="POST">
+                <input type="hidden"
+                       name="csrf_token"
+                       value="{{ csrf_token() }}">
+
+                <button type="submit"
+                        class="admin-btn logout-btn"
+                        onclick="return confirm('Are you sure you want to logout?')">
+                    Logout
+                </button>
+            </form>
+        </div>
+    </section>
+
+    <!-- Statistics -->
+    <section class="admin-stats">
+
+        <div class="stat-card">
+            <div class="stat-icon">📰</div>
+            <div>
+                <p>Total Articles</p>
+                <h2>{{ counts.get('all', 0) }}</h2>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon">📝</div>
+            <div>
+                <p>Draft Articles</p>
+                <h2>{{ counts.get('draft', 0) }}</h2>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon">🌐</div>
+            <div>
+                <p>Published Articles</p>
+                <h2>{{ counts.get('published', 0) }}</h2>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon">📂</div>
+            <div>
+                <p>Categories</p>
+                <h2>{{ category_count }}</h2>
+            </div>
+        </div>
+
+    </section>
+
+    <!-- Recent articles -->
+    <section class="admin-recent">
+        <div class="section-heading">
+            <div>
+                <h2>Recent Articles</h2>
+                <p>Review the latest content in your newsroom.</p>
+            </div>
+
+            <a href="{{ url_for('admin.articles') }}"
+               class="admin-btn secondary-btn">
+                View All Articles
+            </a>
+        </div>
+
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Headline</th>
+                        <th>Category</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for article in articles %}
+                    <tr>
+                        <td>{{ article.title_en }}</td>
+
+                        <td>
+                            {{ article.category.name_en
+                               if article.category else 'Uncategorized' }}
+                        </td>
+
+                        <td>
+                            <span class="status-badge status-{{ article.status }}">
+                                {{ article.status|capitalize }}
+                            </span>
+                        </td>
+
+                        <td>
+                            <a class="table-action"
+                               href="{{ url_for('admin.edit_article',
+                                                article_id=article.id) }}">
+                                Edit
+                            </a>
+
+                            {% if article.status == 'published' %}
+                            <a class="table-action"
+                               href="{{ url_for('articles.detail',
+                                                slug=article.slug) }}"
+                               target="_blank"
+                               rel="noopener noreferrer">
+                                View
+                            </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4">
+                            No articles yet. Create your first news draft.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+</div>
+{% endblock %}

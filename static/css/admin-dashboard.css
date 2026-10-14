@@ -1,0 +1,307 @@
+
+/* =========================================
+   VSTV6 ADMIN NAVIGATION
+========================================= */
+
+.admin-dashboard {
+    width: min(1200px, 94%);
+    margin: 0 auto;
+    padding: 24px 0 48px;
+}
+
+.admin-nav {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    margin-bottom: 28px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    box-shadow: 0 5px 18px rgba(15, 23, 42, 0.05);
+}
+
+.admin-nav .nav-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    padding: 12px 16px;
+    border-radius: 9px;
+    color: #334155;
+    background: #f1f5f9;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 650;
+    transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.admin-nav .nav-link:hover {
+    background: #e2e8f0;
+    transform: translateY(-2px);
+}
+
+.admin-nav .nav-link.active {
+    color: #0f766e;
+    background: #ccfbf1;
+}
+
+.admin-nav .nav-link.create-news-btn {
+    color: #ffffff;
+    background: #0f766e;
+    margin-left: auto;
+}
+
+.admin-nav .nav-link.create-news-btn:hover {
+    background: #115e59;
+}
+
+/* Dashboard header */
+
+.admin-welcome {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 24px;
+    margin-bottom: 28px;
+}
+
+.admin-welcome h1 {
+    margin: 8px 0;
+    color: #0f172a;
+    font-size: clamp(26px, 4vw, 36px);
+}
+
+.admin-welcome p,
+.section-heading p {
+    color: #64748b;
+    margin: 6px 0;
+}
+
+.eyebrow {
+    color: #0f766e;
+    font-size: 12px;
+    font-weight: 750;
+    letter-spacing: 1.5px;
+}
+
+.admin-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.admin-actions form {
+    margin: 0;
+}
+
+/* Buttons */
+
+.admin-btn {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    padding: 11px 16px;
+    border: 0;
+    border-radius: 8px;
+    cursor: pointer;
+    text-decoration: none;
+    font-weight: 650;
+    font-size: 14px;
+}
+
+.secondary-btn {
+    color: #334155;
+    background: #e2e8f0;
+}
+
+.secondary-btn:hover {
+    background: #cbd5e1;
+}
+
+.logout-btn {
+    color: #ffffff;
+    background: #dc2626;
+}
+
+.logout-btn:hover {
+    background: #b91c1c;
+}
+
+/* Statistics */
+
+.admin-stats {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 18px;
+    margin-bottom: 36px;
+}
+
+.stat-card {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 22px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
+}
+
+.stat-icon {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: #ccfbf1;
+    font-size: 23px;
+}
+
+.stat-card p {
+    margin: 0 0 6px;
+    color: #64748b;
+    font-size: 13px;
+}
+
+.stat-card h2 {
+    margin: 0;
+    color: #0f172a;
+    font-size: 27px;
+}
+
+/* Recent articles */
+
+.admin-recent {
+    padding: 24px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
+}
+
+.section-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 22px;
+}
+
+.section-heading h2 {
+    margin: 0;
+    color: #0f172a;
+}
+
+.table-wrap {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.table-wrap table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+.table-wrap th,
+.table-wrap td {
+    padding: 14px 12px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.table-wrap th {
+    color: #475569;
+    background: #f8fafc;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.table-wrap td {
+    color: #334155;
+    font-size: 14px;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.status-draft {
+    color: #92400e;
+    background: #fef3c7;
+}
+
+.status-published {
+    color: #166534;
+    background: #dcfce7;
+}
+
+.table-action {
+    display: inline-block;
+    margin-right: 10px;
+    color: #0f766e;
+    text-decoration: none;
+    font-weight: 650;
+}
+
+.table-action:hover {
+    text-decoration: underline;
+}
+
+/* Responsive layout */
+
+@media (max-width: 900px) {
+    .admin-stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .admin-welcome {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .admin-nav .nav-link.create-news-btn {
+        margin-left: 0;
+    }
+}
+
+@media (max-width: 600px) {
+    .admin-dashboard {
+        width: 92%;
+    }
+
+    .admin-nav {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .admin-nav .nav-link {
+        justify-content: flex-start;
+    }
+
+    .admin-stats {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-recent {
+        padding: 16px;
+    }
+
+    .section-heading {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .admin-actions {
+        width: 100%;
+    }
+}
