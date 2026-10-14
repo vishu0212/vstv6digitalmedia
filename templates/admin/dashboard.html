@@ -11,11 +11,14 @@
 
     <!-- Dashboard navigation -->
     <nav class="admin-nav" aria-label="Admin navigation">
-        <a href="{{ url_for('admin.dashboard') }}" class="nav-link active">
+
+        <a href="{{ url_for('admin.dashboard') }}"
+           class="nav-link active">
             <span>🏠</span> Admin Dashboard
         </a>
 
-        <a href="{{ url_for('admin.articles') }}" class="nav-link">
+        <a href="{{ url_for('admin.articles') }}"
+           class="nav-link">
             <span>📰</span> Manage Articles
         </a>
 
@@ -23,6 +26,17 @@
            class="nav-link create-news-btn">
             <span>＋</span> Create a News Draft
         </a>
+
+        <a href="{{ url_for('admin.contact_messages') }}"
+           class="nav-link">
+            <span>✉️</span> Contact Messages
+            {% if unread_messages|default(0) > 0 %}
+                <span class="message-count">
+                    {{ unread_messages }}
+                </span>
+            {% endif %}
+        </a>
+
     </nav>
 
     <!-- Dashboard header -->
@@ -30,7 +44,7 @@
         <div>
             <span class="eyebrow">VSTV6 DIGITAL MEDIA</span>
             <h1>Newsroom Dashboard</h1>
-            <p>Manage your articles, review drafts, and publish news.</p>
+            <p>Manage your articles, review drafts, publish news, and respond to visitors.</p>
         </div>
 
         <div class="admin-actions">
@@ -85,6 +99,17 @@
             <div>
                 <p>Categories</p>
                 <h2>{{ category_count }}</h2>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon">✉️</div>
+            <div>
+                <p>Unread Messages</p>
+                <h2>{{ unread_messages|default(0) }}</h2>
+                <a href="{{ url_for('admin.contact_messages') }}">
+                    View Messages →
+                </a>
             </div>
         </div>
 
@@ -162,4 +187,21 @@
     </section>
 
 </div>
+
+<style>
+    .admin-nav .message-count {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 22px;
+        height: 22px;
+        padding: 0 6px;
+        margin-left: 6px;
+        border-radius: 999px;
+        background: #dc2626;
+        color: #fff;
+        font-size: 12px;
+        font-weight: 700;
+    }
+</style>
 {% endblock %}
