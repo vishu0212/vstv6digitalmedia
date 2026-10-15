@@ -8,9 +8,14 @@
     <title>{% block title %}VSTV6 Digital Media{% endblock %}</title>
 
     <meta name="description"
-           content="{% block description %}Telugu and English news from VSTV6 Digital Media.{% endblock %}">
+          content="{% block description %}Telugu and English news from VSTV6 Digital Media.{% endblock %}">
 
     <meta name="robots" content="index,follow">
+
+    <!-- Google Search Console verification -->
+    <!-- Replace this example with the EXACT tag from Google Search Console -->
+    <meta name="google-site-verification" content="google8e97696e2dc05713.html">
+
     <link rel="canonical" href="{{ request.base_url }}">
 
     <link rel="icon" type="image/png"
@@ -32,7 +37,6 @@
 <header class="site-header">
     <div class="topbar">
 
-        <!-- Logo only -->
         <a class="brand"
            href="{{ url_for('public.home') }}"
            aria-label="VSTV6 Digital Media home">
