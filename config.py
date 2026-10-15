@@ -21,9 +21,14 @@ class Config:
         },
     }
 
+    # Website information
     SITE_NAME = os.getenv("SITE_NAME", "VSTV6 Digital Media")
-    SITE_URL = os.getenv("SITE_URL", "http://127.0.0.1:5000").rstrip("/")
+    SITE_URL = os.getenv(
+        "SITE_URL",
+        "https://vstv6digitalmedia.vercel.app"
+    ).rstrip("/")
 
+    # Session security
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "Lax"
     SESSION_COOKIE_SECURE = os.getenv("COOKIE_SECURE", "0") == "1"
@@ -31,9 +36,11 @@ class Config:
     REMEMBER_COOKIE_HTTPONLY = True
     REMEMBER_COOKIE_SECURE = os.getenv("COOKIE_SECURE", "0") == "1"
 
+    # Request and form limits
     MAX_CONTENT_LENGTH = 2 * 1024 * 1024
     WTF_CSRF_TIME_LIMIT = 3600
 
+    # RSS feeds
     RSS_FEEDS = [
         x.strip()
         for x in os.getenv("RSS_FEEDS", "").split(",")
