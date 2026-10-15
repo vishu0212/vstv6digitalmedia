@@ -4,6 +4,7 @@ from flask import Flask, render_template
 from config import Config
 from extensions import db, login_manager, csrf, migrate
 from routes.contact import contact_bp
+from flask import Flask, send_from_directory
 
 def create_app():
     app = Flask(__name__)
@@ -67,6 +68,13 @@ def create_app():
     def collect_rss():
         from services.news_collector import collect_feeds
         print(f"New draft articles: {collect_feeds(app)}")
+
+     @app.route("/google8e97696e2dc05713.html")
+    def google_site_verification():
+        return send_from_directory(
+            app.root_path,
+            "google8e97696e2dc05713.html"
+        )
 
     return app
 
