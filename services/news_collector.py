@@ -4,7 +4,6 @@ from __future__ import annotations
 import hashlib
 import logging
 import re
-from datetime import datetime, timezone
 from html import unescape
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
@@ -16,18 +15,30 @@ from models import Article, Category, User
 
 logger = logging.getLogger(__name__)
 
+# Existing English feeds plus Telugu feeds.
 DEFAULT_FEEDS = [
     "https://www.thehindu.com/news/national/telangana/feeder/default.rss",
     "https://n24india.com/rss/category/telangana.xml",
     "https://n24india.com/rss/category/hyderabad.xml",
     "https://feeds.bbci.co.uk/news/world/rss.xml",
     "https://feeds.bbci.co.uk/news/technology/rss.xml",
+
+    # Official Oneindia Telugu RSS feeds
+    "https://telugu.oneindia.com/rss/feeds/oneindia-telugu-fb.xml",
+    "https://telugu.oneindia.com/rss/feeds/telugu-news-fb.xml",
+    "https://telugu.oneindia.com/rss/feeds/telugu-sports-fb.xml",
+    "https://telugu.oneindia.com/rss/feeds/telugu-entertainment-fb.xml",
+    "https://telugu.oneindia.com/rss/feeds/telugu-science-technology-fb.xml",
+    "https://telugu.oneindia.com/rss/feeds/education-jobs-fb.xml",
+    "https://telugu.oneindia.com/rss/feeds/artificial-intelligence-fb.xml",
 ]
 
 REQUEST_TIMEOUT = 15
 MAX_RESPONSE_BYTES = 5 * 1024 * 1024
 MAX_PER_FEED = 25
 USER_AGENT = "VSTV6NewsCollector/1.0"
+
+TELUGU_SCRIPT = re.compile(r"[\u0C00-\u0C7F]")
 
 
 def clean_html(value: str | None) -> str:
@@ -39,7 +50,6 @@ def clean_html(value: str | None) -> str:
     value = re.sub(r"(?is)<(script|style).*?>.*?</\1>", " ", value)
     value = re.sub(r"(?s)<[^>]+>", " ", value)
     value = re.sub(r"\s+", " ", value)
-
     return value.strip()
 
 
@@ -58,7 +68,7 @@ def valid_http_url(value: str | None) -> str | None:
 
 
 def configured_feeds() -> list[str]:
-    """Read RSS_FEEDS from Flask configuration, or use defaults."""
+    """Read RSS_FEEDS from Flask configuration or use defaults."""
     from flask import current_app, has_app_context
 
     if has_app_context():
@@ -74,18 +84,34 @@ def configured_feeds() -> list[str]:
         for item in (configured or [])
         if item and item.strip()
     ]
-
     feeds = [feed for feed in feeds if feed]
 
+    # If RSS_FEEDS is configured, use it. Otherwise use defaults.
     return list(dict.fromkeys(feeds or DEFAULT_FEEDS))
 
 
+def is_telugu_entry(feed_url: str, title: str) -> bool:
+    """
+    Identify Telugu items using the publisher host or Telugu script.
+
+    Note: a Telugu headline from an English-language feed will also
+    be classified as Telugu.
+    """
+    host = urlparse(feed_url).netloc.lower()
+
+    telugu_publisher = (
+        host == "telugu.oneindia.com"
+        or host.endswith(".telugu.oneindia.com")
+    )
+
+    return telugu_publisher or bool(TELUGU_SCRIPT.search(title))
+
+
 def get_author() -> User | None:
-    """Choose an existing active admin/editor as the article author."""
+    """Choose an existing active admin/editor as the author."""
     query = User.query.filter_by(active=True)
 
     author = query.filter_by(role="admin").first()
-
     if author:
         return author
 
@@ -114,39 +140,41 @@ def get_category(entry, feed_title: str | None = None) -> Category | None:
     rules = [
         (
             (
-                "telangana",
-                "hyderabad",
-                "warangal",
-                "karimnagar",
-                "mancherial",
-                "khammam",
-                "nizamabad",
-                "nalgonda",
-                "adilabad",
-                "sircilla",
-                "siddipet",
-                "mahbubnagar",
+                "telangana", "hyderabad", "warangal",
+                "karimnagar", "mancherial", "khammam",
+                "nizamabad", "nalgonda", "adilabad",
+                "sircilla", "siddipet", "mahbubnagar",
+                "తెలంగాణ", "హైదరాబాద్", "వరంగల్",
+                "కరీంనగర్", "ఖమ్మం", "నిజామాబాద్",
             ),
             "telangana",
         ),
         (
-            ("technology", "artificial intelligence", "software", "cyber"),
+            (
+                "technology", "artificial intelligence",
+                "software", "cyber", "టెక్నాలజీ",
+                "సాంకేతిక", "ఏఐ",
+            ),
             "technology",
         ),
         (
-            ("business", "economy", "markets", "finance", "stock market"),
+            (
+                "business", "economy", "markets",
+                "finance", "stock market", "వ్యాపారం",
+                "ఆర్థిక",
+            ),
             "business",
         ),
         (
-            ("cricket", "football", "sports", "tournament"),
+            ("cricket", "football", "sports", "tournament", "క్రికెట్", "క్రీడలు"),
             "sports",
         ),
         (
-            ("cinema", "entertainment", "movies", "film"),
+            ("cinema", "entertainment", "movies", "film", "సినిమా", "వినోదం"),
             "entertainment",
         ),
         (
-            ("international", "world news", "global"),
+            ("international", "world news", "global", "అంతర్జాతీయ"),
             "world",
         ),
     ]
@@ -157,11 +185,13 @@ def get_category(entry, feed_title: str | None = None) -> Category | None:
             if category:
                 return category
 
-    category = Category.query.filter_by(slug="national").first()
+    # Prefer a known general category if no rule matches.
+    for slug in ("national", "telangana"):
+        category = Category.query.filter_by(slug=slug).first()
+        if category:
+            return category
 
-    if category:
-        return category
-
+    # category_id is required by the Article model.
     return Category.query.order_by(Category.id.asc()).first()
 
 
@@ -187,7 +217,9 @@ def get_image_url(entry) -> str | None:
 
     for item in entry.get("enclosures", []) or []:
         if isinstance(item, dict):
-            image_url = valid_http_url(item.get("href") or item.get("url"))
+            image_url = valid_http_url(
+                item.get("href") or item.get("url")
+            )
             media_type = str(item.get("type", "")).lower()
 
             if image_url and media_type.startswith("image/"):
@@ -217,12 +249,15 @@ def make_slug(title: str, source_url: str) -> str:
 
 
 def fetch_feed(feed_url: str):
-    """Fetch a feed with a timeout and a response-size limit."""
+    """Fetch an RSS feed with a timeout and response-size limit."""
     request = Request(
         feed_url,
         headers={
             "User-Agent": USER_AGENT,
-            "Accept": "application/rss+xml, application/atom+xml, application/xml, text/xml",
+            "Accept": (
+                "application/rss+xml, application/atom+xml, "
+                "application/xml, text/xml"
+            ),
         },
     )
 
@@ -263,11 +298,14 @@ def entry_source_url(entry) -> str | None:
 
 def import_rss_drafts(app=None, max_per_feed: int = MAX_PER_FEED) -> dict:
     """
-    Import RSS headlines into Article as drafts.
+    Import RSS headlines as drafts.
 
     This does not publish articles automatically or copy full publisher
-    article text. Editors/admins should verify facts and licensing before
-    editing and publishing.
+    article text. Editors/admins must verify facts and reuse permissions.
+
+    Telugu RSS entries populate Telugu fields. Because the current Article
+    model requires English fields too, the original title and summary are
+    also placed in those required fields. This is not a translation.
     """
     from flask import current_app
 
@@ -298,10 +336,7 @@ def import_rss_drafts(app=None, max_per_feed: int = MAX_PER_FEED) -> dict:
 
             try:
                 feed = fetch_feed(feed_url)
-                feed_title = clean_html(
-                    feed.feed.get("title", "")
-                )
-
+                feed_title = clean_html(feed.feed.get("title", ""))
                 entries = feed.entries[:max_per_feed]
 
                 for entry in entries:
@@ -313,12 +348,11 @@ def import_rss_drafts(app=None, max_per_feed: int = MAX_PER_FEED) -> dict:
                             continue
 
                         source_url = entry_source_url(entry)
-
                         if not source_url:
                             results["skipped"] += 1
                             continue
 
-                        # Check both source URL and generated slug.
+                        # Avoid importing the same original URL twice.
                         existing = Article.query.filter_by(
                             source_url=source_url
                         ).first()
@@ -327,40 +361,80 @@ def import_rss_drafts(app=None, max_per_feed: int = MAX_PER_FEED) -> dict:
                             results["duplicates"] += 1
                             continue
 
-                        summary = clean_html(
-                            entry.get("summary", "")
-                        )
-
-                        # Do not copy the full article from the publisher.
+                        summary = clean_html(entry.get("summary", ""))
                         summary = summary[:490]
 
                         if not summary:
                             summary = (
                                 "Imported headline. Open the original "
-                                "publisher link to review the full report."
+                                "publisher link to review the report."
                             )
 
                         category = get_category(entry, feed_title)
 
-                        article = Article(
-                            title_en=title[:220],
-                            slug=make_slug(title, source_url),
-                            summary_en=summary,
-                            body_en=(
-                                f"Source: {feed_title or 'RSS feed'}\n\n"
-                                "This is an automatically imported news "
-                                "draft. Verify the facts and prepare an "
-                                "original report before publishing.\n\n"
-                                f"Original report: {source_url}"
-                            ),
-                            language="en",
-                            category_id=category.id if category else None,
-                            author_id=author.id,
-                            source_name=(feed_title or "RSS feed")[:150],
-                            source_url=source_url,
-                            image_url=get_image_url(entry),
-                            status="draft",
-                        )
+                        if not category:
+                            logger.warning(
+                                "No category available; skipping %s",
+                                source_url,
+                            )
+                            results["skipped"] += 1
+                            continue
+
+                        image_url = get_image_url(entry)
+                        telugu = is_telugu_entry(feed_url, title)
+
+                        if telugu:
+                            # The English fields are required by the
+                            # current database model. Do not treat these
+                            # values as an English translation.
+                            article = Article(
+                                title_en=title[:220],
+                                title_te=title[:220],
+                                slug=make_slug(title, source_url),
+                                summary_en=summary[:500],
+                                summary_te=summary[:500],
+                                body_en=(
+                                    f"Source: {feed_title or 'RSS feed'}\n\n"
+                                    "Telugu RSS draft. Verify the facts and "
+                                    "prepare an original report before "
+                                    "publishing.\n\n"
+                                    f"Original report: {source_url}"
+                                ),
+                                body_te=(
+                                    "ఇది RSS ద్వారా దిగుమతి చేసిన తెలుగు "
+                                    "వార్తా డ్రాఫ్ట్. వాస్తవాలను ధృవీకరించి, "
+                                    "స్వంత కథనాన్ని సిద్ధం చేసి ఆమోదం "
+                                    "తర్వాత మాత్రమే ప్రచురించండి.\n\n"
+                                    f"మూల వార్త: {source_url}"
+                                ),
+                                language="te",
+                                category_id=category.id,
+                                author_id=author.id,
+                                source_name=(feed_title or "RSS feed")[:200],
+                                source_url=source_url,
+                                image_url=image_url,
+                                status="draft",
+                            )
+                        else:
+                            article = Article(
+                                title_en=title[:220],
+                                slug=make_slug(title, source_url),
+                                summary_en=summary[:500],
+                                body_en=(
+                                    f"Source: {feed_title or 'RSS feed'}\n\n"
+                                    "Automatically imported news draft. "
+                                    "Verify the facts and prepare an "
+                                    "original report before publishing.\n\n"
+                                    f"Original report: {source_url}"
+                                ),
+                                language="en",
+                                category_id=category.id,
+                                author_id=author.id,
+                                source_name=(feed_title or "RSS feed")[:200],
+                                source_url=source_url,
+                                image_url=image_url,
+                                status="draft",
+                            )
 
                         db.session.add(article)
                         db.session.commit()
