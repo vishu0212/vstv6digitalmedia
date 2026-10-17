@@ -29,24 +29,47 @@
 
     <div class="news-filter-bar">
         <div class="news-filter-tabs">
-            <a href="{{ url_for('admin.articles') }}"
+            <a href="{{ url_for('admin.articles', language=selected_language or None) }}"
                class="{{ 'selected' if not selected_status else '' }}">
                 All Articles
             </a>
 
-            <a href="{{ url_for('admin.articles', status='draft') }}"
+            <a href="{{ url_for('admin.articles', status='draft', language=selected_language or None) }}"
                class="{{ 'selected' if selected_status == 'draft' else '' }}">
                 Drafts
             </a>
 
-            <a href="{{ url_for('admin.articles', status='published') }}"
+            <a href="{{ url_for('admin.articles', status='published', language=selected_language or None) }}"
                class="{{ 'selected' if selected_status == 'published' else '' }}">
                 Published
             </a>
         </div>
 
+        <div class="news-filter-tabs">
+            <a href="{{ url_for('admin.articles', status=selected_status or None) }}"
+               class="{{ 'selected' if not selected_language else '' }}">
+                All Languages
+            </a>
+
+            <a href="{{ url_for('admin.articles', status=selected_status or None, language='en') }}"
+               class="{{ 'selected' if selected_language == 'en' else '' }}">
+                English
+            </a>
+
+            <a href="{{ url_for('admin.articles', status=selected_status or None, language='te') }}"
+               class="{{ 'selected' if selected_language == 'te' else '' }}">
+                తెలుగు
+            </a>
+
+            <a href="{{ url_for('admin.articles', status=selected_status or None, language='both') }}"
+               class="{{ 'selected' if selected_language == 'both' else '' }}">
+                Both
+            </a>
+        </div>
+
         <span class="news-total">
-            {{ articles|length }} article{{ '' if articles|length == 1 else 's' }}
+            {{ articles|length }}
+            article{{ '' if articles|length == 1 else 's' }}
         </span>
     </div>
 
@@ -63,6 +86,7 @@
                 <thead>
                     <tr>
                         <th>Article</th>
+                        <th>Language</th>
                         <th>Category</th>
                         <th>Status</th>
                         <th>Created</th>
@@ -88,13 +112,37 @@
                                 {% endif %}
 
                                 <div class="news-article-info">
-                                    <strong>{{ a.title_en }}</strong>
-                                    {% if a.title_te %}
+                                    <strong>
+                                        {% if a.language == 'te' %}
+                                            {{ a.title_te or a.title_en }}
+                                        {% else %}
+                                            {{ a.title_en }}
+                                        {% endif %}
+                                    </strong>
+
+                                    {% if a.language == 'both' and a.title_te %}
+                                    <span>{{ a.title_te }}</span>
+                                    {% elif a.language == 'te' and a.title_en != a.title_te %}
+                                    <span>{{ a.title_en }}</span>
+                                    {% elif a.language == 'en' and a.title_te %}
                                     <span>{{ a.title_te }}</span>
                                     {% endif %}
+
                                     <small>Article #{{ a.id }}</small>
                                 </div>
                             </div>
+                        </td>
+
+                        <td>
+                            {% if a.language == 'te' %}
+                                తెలుగు
+                            {% elif a.language == 'en' %}
+                                English
+                            {% elif a.language == 'both' %}
+                                Both
+                            {% else %}
+                                {{ a.language }}
+                            {% endif %}
                         </td>
 
                         <td>
@@ -177,14 +225,14 @@
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="5">
+                        <td colspan="6">
                             <div class="news-empty-state">
                                 <div class="empty-icon">📰</div>
                                 <h3>No articles found</h3>
-                                <p>Create your first news draft to get started.</p>
+                                <p>No articles match the selected filters.</p>
                                 <a class="news-primary-btn"
-                                   href="{{ url_for('admin.new_article') }}">
-                                    Create News Draft
+                                   href="{{ url_for('admin.articles') }}">
+                                    Show All Articles
                                 </a>
                             </div>
                         </td>

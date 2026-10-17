@@ -238,10 +238,17 @@ def mark_message_read(message_id):
 @login_required
 def articles():
     status = request.args.get("status", "").strip()
+    language = request.args.get("language", "").strip()
+
     query = Article.query
 
+    # Filter by publication status.
     if status in {"draft", "published"}:
         query = query.filter_by(status=status)
+
+    # Filter by language.
+    if language in {"en", "te", "both"}:
+        query = query.filter_by(language=language)
 
     article_list = query.order_by(Article.id.desc()).all()
 
@@ -249,6 +256,7 @@ def articles():
         "admin/articles.html",
         articles=article_list,
         selected_status=status,
+        selected_language=language,
     )
 
 
@@ -315,7 +323,7 @@ def unpublish_article(article_id):
         flash("Article moved back to drafts.", "success")
     except Exception:
         db.session.rollback()
-        logger.exception("Could not unpublish article.")
+        logger.exception("Could not unpublish the article.")
         flash("Could not unpublish the article.", "danger")
 
     return redirect(url_for("admin.articles"))
@@ -334,7 +342,7 @@ def delete_article(article_id):
         flash("Article deleted successfully.", "success")
     except Exception:
         db.session.rollback()
-        logger.exception("Could not delete article.")
+        logger.exception("Could not delete the article.")
         flash("Could not delete the article.", "danger")
 
     return redirect(url_for("admin.articles"))

@@ -1,0 +1,48 @@
+
+name: VSTV6 RSS News Collector
+
+on:
+  schedule:
+    # Run every hour
+    - cron: "0 * * * *"
+    # Daily run at 6:00 AM India time (12:30 AM UTC)
+    - cron: "30 0 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vstv6-rss-collector
+  cancel-in-progress: false
+
+jobs:
+  collect-rss:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      SECRET_KEY: ${{ secrets.SECRET_KEY }}
+      RSS_FEEDS: ${{ secrets.RSS_FEEDS }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+
+      - name: Validate configuration
+        run: |
+          python -c "import os; assert os.getenv('DATABASE_URL'), 'Missing DATABASE_URL'; assert os.getenv('SECRET_KEY'), 'Missing SECRET_KEY'; assert len([x for x in os.getenv('RSS_FEEDS', '').split(',') if x.strip()]) >= 12, 'Expected 12 RSS feeds'; print('Configuration checks passed')"
+
+      - name: Collect RSS drafts
+        run: python -m flask --app app collect-rss
