@@ -3,7 +3,7 @@ name: VSTV6 RSS News Collector
 
 on:
   schedule:
-    - cron: "0 * * * *"
+    - cron: "17 * * * *"
   workflow_dispatch:
 
 permissions:
@@ -16,12 +16,13 @@ concurrency:
 jobs:
   collect-rss:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       SECRET_KEY: ${{ secrets.SECRET_KEY }}
       RSS_FEEDS: ${{ secrets.RSS_FEEDS }}
+      PYTHONUNBUFFERED: "1"
 
     steps:
       - name: Checkout repository
@@ -39,7 +40,34 @@ jobs:
 
       - name: Validate configuration
         run: |
-          python -c "import os; assert os.getenv('DATABASE_URL'), 'Missing DATABASE_URL'; assert os.getenv('SECRET_KEY'), 'Missing SECRET_KEY'; assert len([x for x in os.getenv('RSS_FEEDS', '').split(',') if x.strip()]) >= 12, 'Expected 12 RSS feeds'; print('Configuration checks passed')"
+          python - <<'PY'
+          import os
+          import sys
+
+          required = ["DATABASE_URL", "SECRET_KEY", "RSS_FEEDS"]
+          missing = [key for key in required if not os.getenv(key, "").strip()]
+
+          if missing:
+              print("Missing GitHub Actions secrets:", ", ".join(missing))
+              sys.exit(1)
+
+          feeds = [
+              feed.strip()
+              for feed in os.environ["RSS_FEEDS"].split(",")
+              if feed.strip()
+          ]
+
+          if len(feeds) < 12:
+              print(f"Expected at least 12 RSS feeds; received {len(feeds)}.")
+              sys.exit(1)
+
+          print(f"Configuration checks passed. RSS feeds configured: {len(feeds)}")
+          PY
 
       - name: Collect RSS drafts
         run: python -m flask --app app collect-rss
+
+      - name: Report collection failure
+        if: failure()
+        run: |
+          echo "::error::VSTV6 RSS collection failed. Review the failed step above."
