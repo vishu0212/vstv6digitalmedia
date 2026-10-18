@@ -190,6 +190,26 @@ def dashboard():
     )
 
 
+
+@admin_bp.route("/rss-automation")
+@login_required
+def rss_automation():
+    _require_admin()
+
+    from models.rss_run import RssRun
+    from services.news_collector import configured_feeds
+
+    latest = RssRun.query.order_by(RssRun.started_at.desc()).first()
+    runs = RssRun.query.order_by(RssRun.started_at.desc()).limit(30).all()
+
+    return render_template(
+        "admin/rss_automation.html",
+        feeds=configured_feeds(),
+        latest=latest,
+        runs=runs,
+    )
+
+
 # -------------------- CONTACT MESSAGES --------------------
 
 @admin_bp.route("/messages")

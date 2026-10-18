@@ -10,6 +10,7 @@ from urllib.request import Request, urlopen
 
 import feedparser
 
+from services.article_extractor import extract_article_text
 from extensions import db
 from models import Article, Category, User
 
@@ -316,6 +317,7 @@ def import_rss_drafts(app=None, max_per_feed: int = MAX_PER_FEED) -> dict:
         "feeds_checked": 0,
         "created": 0,
         "duplicates": 0,
+        "updated": 0,
         "skipped": 0,
         "errors": 0,
     }
@@ -352,23 +354,81 @@ def import_rss_drafts(app=None, max_per_feed: int = MAX_PER_FEED) -> dict:
                             results["skipped"] += 1
                             continue
 
-                        # Avoid importing the same original URL twice.
+                        # Find an existing article by its original publisher URL.
+                        # Old placeholder drafts may be upgraded with extracted text,
+                        # but never overwrite published articles or edited draft content.
                         existing = Article.query.filter_by(
                             source_url=source_url
                         ).first()
 
-                        if existing:
-                            results["duplicates"] += 1
-                            continue
-
                         summary = clean_html(entry.get("summary", ""))
-                        summary = summary[:490]
 
                         if not summary:
                             summary = (
                                 "Imported headline. Open the original "
                                 "publisher link to review the report."
                             )
+
+                        summary = summary[:490]
+
+                        if existing:
+                            old_body = (
+                                (getattr(existing, "body_te", "") or "")
+                                if getattr(existing, "language", "en") == "te"
+                                else (getattr(existing, "body_en", "") or "")
+                            )
+                            is_old_placeholder = any(
+                                marker in old_body
+                                for marker in (
+                                    "Telugu RSS draft. Verify the facts",
+                                    "Automatically imported news draft.",
+                                    "Full article text could not be extracted.",
+                                )
+                            )
+
+                            if (
+                                getattr(existing, "status", None) == "draft"
+                                and is_old_placeholder
+                            ):
+                                extracted_text = extract_article_text(source_url)
+
+                                if extracted_text:
+                                    source_label = feed_title or "RSS feed"
+                                    if getattr(existing, "language", "en") == "te":
+                                        existing.body_te = (
+                                            f"{extracted_text}\n\n"
+                                            f"మూల వార్త: {source_url}"
+                                        )
+                                        # Keep required English fields, but don't
+                                        # label the Telugu source text as English.
+                                        existing.body_en = (
+                                            f"Source: {source_label}\n\n"
+                                            f"{summary}\n\n"
+                                            "Telugu-language source; review and "
+                                            "prepare an original report before publishing.\n\n"
+                                            f"Original report: {source_url}"
+                                        )
+                                    else:
+                                        existing.body_en = (
+                                            f"{extracted_text}\n\n"
+                                            f"Source: {source_label}\n"
+                                            f"Original report: {source_url}"
+                                        )
+
+                                    # Explicitly keep the article unpublished.
+                                    existing.status = "draft"
+                                    db.session.commit()
+                                    results.setdefault("updated", 0)
+                                    results["updated"] += 1
+                                    continue
+
+                            results["duplicates"] += 1
+                            continue
+
+                        # Extract public article text when accessible. If extraction
+                        # fails, keep the RSS summary and original source attribution.
+                        # The imported article always remains a draft.
+                        extracted_text = extract_article_text(source_url)
 
                         category = get_category(entry, feed_title)
 
@@ -395,18 +455,22 @@ def import_rss_drafts(app=None, max_per_feed: int = MAX_PER_FEED) -> dict:
                                 summary_te=summary[:500],
                                 body_en=(
                                     f"Source: {feed_title or 'RSS feed'}\n\n"
-                                    "Telugu RSS draft. Verify the facts and "
-                                    "prepare an original report before "
+                                    f"{summary}\n\n"
+                                    "Telugu RSS draft. Review the facts and "
+                                    "prepare an accurate report before "
                                     "publishing.\n\n"
                                     f"Original report: {source_url}"
                                 ),
                                 body_te=(
-                                    "ఇది RSS ద్వారా దిగుమతి చేసిన తెలుగు "
-                                    "వార్తా డ్రాఫ్ట్. వాస్తవాలను ధృవీకరించి, "
-                                    "స్వంత కథనాన్ని సిద్ధం చేసి ఆమోదం "
-                                    "తర్వాత మాత్రమే ప్రచురించండి.\n\n"
-                                    f"మూల వార్త: {source_url}"
-                                ),
+                                    f"{extracted_text}\n\n"
+                                    if extracted_text
+                                    else (
+                                        "పూర్తి కథనం అందుబాటులో లేదు. "
+                                        "RSS సారాంశాన్ని పరిశీలించి, "
+                                        "వాస్తవాలను ధృవీకరించి స్వంత కథనాన్ని "
+                                        "సిద్ధం చేయండి.\n\n"
+                                    )
+                                ) + f"మూల వార్త: {source_url}",
                                 language="te",
                                 category_id=category.id,
                                 author_id=author.id,
@@ -421,10 +485,16 @@ def import_rss_drafts(app=None, max_per_feed: int = MAX_PER_FEED) -> dict:
                                 slug=make_slug(title, source_url),
                                 summary_en=summary[:500],
                                 body_en=(
-                                    f"Source: {feed_title or 'RSS feed'}\n\n"
-                                    "Automatically imported news draft. "
-                                    "Verify the facts and prepare an "
-                                    "original report before publishing.\n\n"
+                                    f"{extracted_text}\n\n"
+                                    if extracted_text
+                                    else (
+                                        f"{summary}\n\n"
+                                        "Full article text could not be extracted. "
+                                        "Review the original report and verify "
+                                        "the facts before preparing a story.\n\n"
+                                    )
+                                ) + (
+                                    f"Source: {feed_title or 'RSS feed'}\n"
                                     f"Original report: {source_url}"
                                 ),
                                 language="en",
@@ -462,15 +532,50 @@ def import_rss_drafts(app=None, max_per_feed: int = MAX_PER_FEED) -> dict:
 
 
 def collect_feeds(app=None) -> int:
-    """Compatibility wrapper for the existing Flask CLI command."""
-    results = import_rss_drafts(app=app)
+    """Collect RSS drafts and record the run for the admin dashboard."""
+    from datetime import datetime, timezone
+    from models.rss_run import RssRun
 
-    print(
-        "RSS results: "
-        f"{results['created']} new drafts, "
-        f"{results['duplicates']} duplicates, "
-        f"{results['skipped']} skipped, "
-        f"{results['errors']} errors."
-    )
+    if app is None:
+        from flask import current_app
+        app = current_app._get_current_object()
 
-    return results["created"]
+    with app.app_context():
+        run = RssRun(status="running")
+        db.session.add(run)
+        db.session.commit()
+
+        try:
+            results = import_rss_drafts(app=app)
+
+            run.feeds_checked = results.get("feeds_checked", 0)
+            run.created = results.get("created", 0)
+            run.duplicates = results.get("duplicates", 0)
+            run.updated = results.get("updated", 0)
+            run.skipped = results.get("skipped", 0)
+            run.errors = results.get("errors", 0)
+            run.status = (
+                "completed_with_errors" if run.errors else "success"
+            )
+            run.finished_at = datetime.now(timezone.utc)
+            db.session.commit()
+
+            print(
+                "RSS results: "
+                f"{run.created} new drafts, "
+                f"{run.duplicates} duplicates, "
+                f"{run.updated} existing drafts updated, "
+                f"{run.skipped} skipped, "
+                f"{run.errors} errors."
+            )
+            return run.created
+
+        except Exception as exc:
+            db.session.rollback()
+            failed_run = db.session.get(RssRun, run.id)
+            if failed_run is not None:
+                failed_run.status = "failed"
+                failed_run.error_message = str(exc)[:4000]
+                failed_run.finished_at = datetime.now(timezone.utc)
+                db.session.commit()
+            raise

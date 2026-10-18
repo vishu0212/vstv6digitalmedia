@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-4">
+    <h1>RSS Automation</h1>
+    <p>Monitor scheduled RSS collection. Articles are saved as drafts and
+       are not automatically published.</p>
+
+    <p><strong>Expected schedule:</strong> Hourly via GitHub Actions.</p>
+    <p><strong>Latest recorded status:</strong>
+        {% if latest %}
+            {{ latest.status }}
+        {% else %}
+            No run has been recorded yet.
+        {% endif %}
+    </p>
+
+    {% if latest %}
+    <div class="row g-3 mb-4">
+        {% for label, value in [
+            ('Feeds checked', latest.feeds_checked),
+            ('New drafts', latest.created),
+            ('Updated drafts', latest.updated),
+            ('Duplicates', latest.duplicates),
+            ('Skipped', latest.skipped),
+            ('Errors', latest.errors)
+        ] %}
+        <div class="col-6 col-md-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div>{{ label }}</div>
+                    <h3>{{ value }}</h3>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <h2>Configured RSS feeds</h2>
+    {% if feeds %}
+    <ul>
+        {% for feed in feeds %}
+        <li class="mb-2"><code>{{ feed }}</code></li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p>No RSS feeds are configured in the current application environment.</p>
+    {% endif %}
+
+    <h2 class="mt-4">Recent collection history</h2>
+    {% if runs %}
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Started (UTC)</th>
+                    <th>Status</th>
+                    <th>New drafts</th>
+                    <th>Updated</th>
+                    <th>Duplicates</th>
+                    <th>Errors</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for run in runs %}
+                <tr>
+                    <td>
+                        {% if run.started_at %}
+                            {{ run.started_at.strftime('%Y-%m-%d %H:%M:%S') }}
+                        {% endif %}
+                    </td>
+                    <td>{{ run.status }}</td>
+                    <td>{{ run.created }}</td>
+                    <td>{{ run.updated }}</td>
+                    <td>{{ run.duplicates }}</td>
+                    <td>{{ run.errors }}</td>
+                </tr>
+                {% if run.error_message %}
+                <tr>
+                    <td colspan="6">
+                        <strong>Error:</strong> {{ run.error_message }}
+                    </td>
+                </tr>
+                {% endif %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p>No collection history is available yet. The dashboard will show
+       results after the scheduled collector records its next run.</p>
+    {% endif %}
+
+    <p class="text-muted">
+        This page only monitors collection history. It does not start a run
+        or publish articles.
+    </p>
+</div>
+{% endblock %}
