@@ -1,5 +1,4 @@
-
-name: VSTV6 RSS News Collector
+name: VSTV6 RSS Automation
 
 on:
   schedule:
@@ -16,16 +15,10 @@ concurrency:
 jobs:
   collect-rss:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-
-    env:
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      SECRET_KEY: ${{ secrets.SECRET_KEY }}
-      RSS_FEEDS: ${{ secrets.RSS_FEEDS }}
-      PYTHONUNBUFFERED: "1"
+    timeout-minutes: 10
 
     steps:
-      - name: Checkout repository
+      - name: Checkout project
         uses: actions/checkout@v4
 
       - name: Set up Python
@@ -33,41 +26,12 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-          cache-dependency-path: requirements.txt
 
       - name: Install dependencies
-        run: python -m pip install -r requirements.txt
+        run: pip install -r requirements.txt
 
-      - name: Validate configuration
-        run: |
-          python - <<'PY'
-          import os
-          import sys
-
-          required = ["DATABASE_URL", "SECRET_KEY", "RSS_FEEDS"]
-          missing = [key for key in required if not os.getenv(key, "").strip()]
-
-          if missing:
-              print("Missing GitHub Actions secrets:", ", ".join(missing))
-              sys.exit(1)
-
-          feeds = [
-              feed.strip()
-              for feed in os.environ["RSS_FEEDS"].split(",")
-              if feed.strip()
-          ]
-
-          if len(feeds) < 12:
-              print(f"Expected at least 12 RSS feeds; received {len(feeds)}.")
-              sys.exit(1)
-
-          print(f"Configuration checks passed. RSS feeds configured: {len(feeds)}")
-          PY
-
-      - name: Collect RSS drafts
+      - name: Run RSS collector
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          SECRET_KEY: ${{ secrets.SECRET_KEY }}
         run: python -m flask --app app collect-rss
-
-      - name: Report collection failure
-        if: failure()
-        run: |
-          echo "::error::VSTV6 RSS collection failed. Review the failed step above."

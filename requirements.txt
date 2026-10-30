@@ -11,3 +11,4 @@ gunicorn>=22,<24
 feedparser
 requests
 trafilatura
+reportlab>=5.1,<6
