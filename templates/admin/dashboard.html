@@ -3,39 +3,51 @@
 
 {% block title %}Admin Dashboard | VSTV6{% endblock %}
 
-{% block content %}
+{% block head %}
 <link rel="stylesheet"
       href="{{ url_for('static', filename='css/admin-dashboard.css') }}">
+{% endblock %}
 
+{% block content %}
 <div class="admin-dashboard">
 
     <!-- Dashboard navigation -->
     <nav class="admin-nav" aria-label="Admin navigation">
 
         <a href="{{ url_for('admin.dashboard') }}"
-           class="nav-link active">
-            <span>🏠</span> Admin Dashboard
+           class="nav-link active"
+           aria-current="page">
+            <span aria-hidden="true">⌂</span> Dashboard
         </a>
 
         <a href="{{ url_for('admin.articles') }}"
            class="nav-link">
-            <span>📰</span> Manage Articles
+            <span aria-hidden="true">▤</span> Articles
         </a>
 
-        <a href="{{ url_for('admin.rss_automation') }}">RSS Automation</a>
-        <a href="{{ url_for('admin.new_article') }}"
-           class="nav-link create-news-btn">
-            <span>＋</span> Create a News Draft
+        <a href="{{ url_for('admin.rss_automation') }}"
+           class="nav-link">
+            <span aria-hidden="true">↻</span> RSS Automation
         </a>
 
         <a href="{{ url_for('admin.contact_messages') }}"
            class="nav-link">
-            <span>✉️</span> Contact Messages
+            <span aria-hidden="true">✉</span> Messages
             {% if unread_messages|default(0) > 0 %}
                 <span class="message-count">
                     {{ unread_messages }}
                 </span>
             {% endif %}
+        </a>
+
+        <a href="{{ url_for('newspaper.generator') }}"
+           class="nav-link">
+            <span aria-hidden="true">▤</span> Newspaper
+        </a>
+
+        <a href="{{ url_for('admin.new_article') }}"
+           class="nav-link create-news-btn">
+            <span aria-hidden="true">＋</span> New Article
         </a>
 
     </nav>
@@ -45,7 +57,7 @@
         <div>
             <span class="eyebrow">VSTV6 DIGITAL MEDIA</span>
             <h1>Newsroom Dashboard</h1>
-            <p>Manage your articles, review drafts, publish news, and respond to visitors.</p>
+            <p>Manage stories, track publishing activity, and stay on top of reader messages.</p>
         </div>
 
         <div class="admin-actions">
@@ -72,7 +84,7 @@
     <section class="admin-stats">
 
         <div class="stat-card">
-            <div class="stat-icon">📰</div>
+            <div class="stat-icon" aria-hidden="true">▤</div>
             <div>
                 <p>Total Articles</p>
                 <h2>{{ counts.get('all', 0) }}</h2>
@@ -80,7 +92,7 @@
         </div>
 
         <div class="stat-card">
-            <div class="stat-icon">📝</div>
+            <div class="stat-icon" aria-hidden="true">✎</div>
             <div>
                 <p>Draft Articles</p>
                 <h2>{{ counts.get('draft', 0) }}</h2>
@@ -88,7 +100,7 @@
         </div>
 
         <div class="stat-card">
-            <div class="stat-icon">🌐</div>
+            <div class="stat-icon" aria-hidden="true">◉</div>
             <div>
                 <p>Published Articles</p>
                 <h2>{{ counts.get('published', 0) }}</h2>
@@ -96,7 +108,7 @@
         </div>
 
         <div class="stat-card">
-            <div class="stat-icon">📂</div>
+            <div class="stat-icon" aria-hidden="true">▦</div>
             <div>
                 <p>Categories</p>
                 <h2>{{ category_count }}</h2>
@@ -104,7 +116,7 @@
         </div>
 
         <div class="stat-card">
-            <div class="stat-icon">✉️</div>
+            <div class="stat-icon" aria-hidden="true">✉</div>
             <div>
                 <p>Unread Messages</p>
                 <h2>{{ unread_messages|default(0) }}</h2>
@@ -134,17 +146,19 @@
             <table>
                 <thead>
                     <tr>
-                        <th>Headline</th>
-                        <th>Category</th>
-                        <th>Status</th>
-                        <th>Action</th>
+                        <th scope="col">Headline</th>
+                        <th scope="col">Category</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Actions</th>
                     </tr>
                 </thead>
 
                 <tbody>
                     {% for article in articles %}
                     <tr>
-                        <td>{{ article.title_en }}</td>
+                        <td class="article-headline">
+                            {{ article.title_te or article.title_en or 'Untitled article' }}
+                        </td>
 
                         <td>
                             {{ article.category.name_en
@@ -177,8 +191,13 @@
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="4">
-                            No articles yet. Create your first news draft.
+                        <td class="empty-table" colspan="4">
+                            <strong>Your newsroom is ready.</strong>
+                            <span>Create a draft to start building your article list.</span>
+                            <a class="table-action"
+                               href="{{ url_for('admin.new_article') }}">
+                                Create an article →
+                            </a>
                         </td>
                     </tr>
                     {% endfor %}
@@ -188,21 +207,4 @@
     </section>
 
 </div>
-
-<style>
-    .admin-nav .message-count {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        min-width: 22px;
-        height: 22px;
-        padding: 0 6px;
-        margin-left: 6px;
-        border-radius: 999px;
-        background: #dc2626;
-        color: #fff;
-        font-size: 12px;
-        font-weight: 700;
-    }
-</style>
 {% endblock %}

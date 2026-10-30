@@ -1,0 +1,474 @@
+```html
+{% extends "base.html" %}
+
+{% block title %}Newspaper Generator | VSTV6 Digital Media{% endblock %}
+
+{% block head %}
+<style>
+    .newspaper-dashboard {
+        max-width: 1100px;
+        margin: 30px auto;
+        padding: 0 16px;
+    }
+
+    .newspaper-header {
+        padding: 30px;
+        border-radius: 16px;
+        background: linear-gradient(135deg, #641b2e, #a5263c);
+        color: #fff;
+        margin-bottom: 24px;
+        box-shadow: 0 8px 25px rgba(100, 27, 46, .15);
+    }
+
+    .newspaper-header h1 {
+        margin: 0 0 10px;
+        font-size: clamp(25px, 4vw, 36px);
+    }
+
+    .newspaper-header p {
+        margin-bottom: 0;
+        line-height: 1.7;
+    }
+
+    .newspaper-panel {
+        padding: 26px;
+        margin-bottom: 24px;
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 14px;
+        box-shadow: 0 5px 18px rgba(0, 0, 0, .05);
+    }
+
+    .newspaper-panel h2 {
+        margin-top: 0;
+        margin-bottom: 16px;
+        color: #641b2e;
+        font-size: 23px;
+    }
+
+    .edition-fields {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 20px;
+    }
+
+    .field-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 700;
+    }
+
+    .field-group input,
+    .field-group select {
+        width: 100%;
+        max-width: 100%;
+        padding: 12px;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        background: #fff;
+        color: #222;
+    }
+
+    .article-list {
+        display: grid;
+        gap: 12px;
+        margin-top: 20px;
+    }
+
+    .article-option {
+        display: flex;
+        align-items: flex-start;
+        gap: 14px;
+        padding: 17px;
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: border-color .2s, background .2s;
+    }
+
+    .article-option:hover {
+        border-color: #a5263c;
+        background: #fff8f8;
+    }
+
+    .article-option:has(input:checked) {
+        border-color: #a5263c;
+        background: #fff5f6;
+    }
+
+    .article-option input {
+        flex-shrink: 0;
+        margin-top: 5px;
+        width: 18px;
+        height: 18px;
+        accent-color: #a5263c;
+    }
+
+    .article-title {
+        display: block;
+        font-weight: 700;
+        color: #222;
+        line-height: 1.6;
+    }
+
+    .article-meta {
+        display: block;
+        margin-top: 6px;
+        font-size: 13px;
+        color: #666;
+        line-height: 1.6;
+    }
+
+    .article-summary {
+        margin-top: 8px;
+        color: #555;
+        line-height: 1.6;
+        font-size: 14px;
+    }
+
+    .selection-toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin: 18px 0;
+    }
+
+    .selection-toolbar button {
+        padding: 8px 12px;
+        border: 1px solid #ddd;
+        border-radius: 7px;
+        background: #f8fafc;
+        cursor: pointer;
+    }
+
+    .selection-count {
+        color: #641b2e;
+        font-weight: 700;
+    }
+
+    .newspaper-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        margin-top: 20px;
+        padding: 13px 20px;
+        border: 0;
+        border-radius: 8px;
+        background: #8f2037;
+        color: #fff;
+        font-weight: 700;
+        cursor: pointer;
+        text-decoration: none;
+        font-size: 15px;
+    }
+
+    .newspaper-button:hover {
+        background: #641b2e;
+        color: #fff;
+    }
+
+    .button-secondary {
+        background: #087f70;
+    }
+
+    .button-secondary:hover {
+        background: #066558;
+    }
+
+    .empty-message {
+        padding: 20px;
+        border-radius: 8px;
+        background: #fff7ed;
+        color: #9a3412;
+        line-height: 1.7;
+    }
+
+    .form-note {
+        margin-top: 14px;
+        color: #64748b;
+        font-size: 13px;
+        line-height: 1.6;
+    }
+
+    .selected-article {
+        padding: 16px 0;
+        border-bottom: 1px solid #eee;
+    }
+
+    .selected-article h3 {
+        margin: 0 0 10px;
+        color: #172033;
+    }
+
+    .selected-article img {
+        max-width: 100%;
+        max-height: 240px;
+        object-fit: cover;
+        border-radius: 8px;
+    }
+
+    @media (max-width: 650px) {
+        .newspaper-dashboard {
+            margin-top: 18px;
+            padding: 0 12px;
+        }
+
+        .newspaper-panel,
+        .newspaper-header {
+            padding: 18px;
+        }
+
+        .edition-fields {
+            grid-template-columns: 1fr;
+        }
+
+        .newspaper-button {
+            width: 100%;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<main class="newspaper-dashboard">
+
+    <header class="newspaper-header">
+        <h1>📰 Newspaper Generator</h1>
+        <p>
+            Prepare a professional VSTV6 Digital Media newspaper
+            using articles already published on your website.
+        </p>
+        <p>
+            తెలుగు వార్తలు · English News · Telangana · National · Technology
+        </p>
+    </header>
+
+    <section class="newspaper-panel">
+        <h2>Edition Details | ఎడిషన్ వివరాలు</h2>
+
+        <div class="edition-fields">
+            <div class="field-group">
+                <label for="edition_date">Newspaper Date</label>
+                <input
+                    id="edition_date"
+                    type="date"
+                    value="{{ edition_date }}"
+                    form="newspaper-form"
+                    name="edition_date"
+                    required
+                >
+            </div>
+
+            <div class="field-group">
+                <label for="edition_language">Newspaper Language</label>
+                <select
+                    id="edition_language"
+                    form="newspaper-form"
+                    name="edition_language"
+                >
+                    <option value="both">Telugu &amp; English</option>
+                    <option value="te">Telugu Edition</option>
+                    <option value="en">English Edition</option>
+                </select>
+            </div>
+        </div>
+
+        <p style="margin-top: 20px;">
+            Published articles available:
+            <strong>{{ articles|length }}</strong>
+        </p>
+    </section>
+
+    <form
+        id="newspaper-form"
+        method="POST"
+        action="{{ url_for('newspaper.preview') }}"
+    >
+        <input
+            type="hidden"
+            name="csrf_token"
+            value="{{ csrf_token() }}"
+        >
+
+        <section class="newspaper-panel">
+            <h2>Select Newspaper Articles | వార్తలను ఎంచుకోండి</h2>
+
+            <p>
+                Select the published news stories you want to include
+                in your newspaper edition.
+            </p>
+
+            {% if articles %}
+                <div class="selection-toolbar">
+                    <span class="selection-count">
+                        Selected: <span id="selected-count">0</span>
+                    </span>
+
+                    <div>
+                        <button type="button" id="select-all">
+                            Select All
+                        </button>
+
+                        <button type="button" id="clear-all">
+                            Clear Selection
+                        </button>
+                    </div>
+                </div>
+
+                <div class="article-list">
+                    {% for article in articles %}
+                    <label class="article-option">
+
+                        <input
+                            type="checkbox"
+                            class="article-checkbox"
+                            name="article_ids"
+                            value="{{ article.id }}"
+                            {% if article.id in selected_ids %}checked{% endif %}
+                        >
+
+                        <span>
+                            <span class="article-title">
+                                {{ article.title_te or article.title_en or "Untitled article" }}
+                            </span>
+
+                            <span class="article-meta">
+                                Category:
+                                {{ article.category.name_en
+                                   if article.category else 'General' }}
+
+                                · Language:
+                                {{ article.language|upper if article.language else 'N/A' }}
+
+                                · Article ID: {{ article.id }}
+                            </span>
+
+                            {% set summary = article.summary_te or article.summary_en %}
+                            {% if summary %}
+                            <span class="article-summary">
+                                {{ summary|truncate(220) }}
+                            </span>
+                            {% endif %}
+                        </span>
+
+                    </label>
+                    {% endfor %}
+                </div>
+
+                <button
+                    class="newspaper-button"
+                    type="submit"
+                >
+                    👁️ Generate Newspaper Preview
+                </button>
+
+                <p class="form-note">
+                    The preview uses selected published articles.
+                    You can review the edition before downloading the PDF.
+                </p>
+
+            {% else %}
+                <div class="empty-message">
+                    No published articles are available.
+                    Publish articles before creating a newspaper.
+                </div>
+            {% endif %}
+        </section>
+    </form>
+
+    {% if selected_articles %}
+    <section class="newspaper-panel">
+        <h2>Selected Articles</h2>
+
+        <p>
+            You selected {{ selected_articles|length }} articles.
+        </p>
+
+        {% for article in selected_articles %}
+        <article class="selected-article">
+            <h3>
+                {{ article.title_te or article.title_en or "Untitled article" }}
+            </h3>
+
+            {% if article.image_url %}
+            <img
+                src="{{ article.image_url }}"
+                alt="News image"
+                loading="lazy"
+            >
+            {% endif %}
+
+            <p>
+                {{ article.summary_te or article.summary_en or "" }}
+            </p>
+        </article>
+        {% endfor %}
+    </section>
+    {% endif %}
+
+</main>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const checkboxes = Array.from(
+        document.querySelectorAll(".article-checkbox")
+    );
+
+    const countElement = document.getElementById("selected-count");
+    const selectAllButton = document.getElementById("select-all");
+    const clearAllButton = document.getElementById("clear-all");
+    const form = document.getElementById("newspaper-form");
+
+    function updateSelectedCount() {
+        if (!countElement) return;
+
+        countElement.textContent = checkboxes.filter(
+            checkbox => checkbox.checked
+        ).length;
+    }
+
+    if (selectAllButton) {
+        selectAllButton.addEventListener("click", function () {
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = true;
+            });
+
+            updateSelectedCount();
+        });
+    }
+
+    if (clearAllButton) {
+        clearAllButton.addEventListener("click", function () {
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = false;
+            });
+
+            updateSelectedCount();
+        });
+    }
+
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener("change", updateSelectedCount);
+    });
+
+    if (form) {
+        form.addEventListener("submit", function (event) {
+            const selected = checkboxes.filter(
+                checkbox => checkbox.checked
+            );
+
+            if (selected.length === 0) {
+                event.preventDefault();
+                alert("Please select at least one published article.");
+            }
+        });
+    }
+
+    updateSelectedCount();
+});
+</script>
+{% endblock %}
+```
