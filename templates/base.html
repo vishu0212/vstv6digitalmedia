@@ -1,6 +1,6 @@
 
 <!doctype html>
-<html lang="en">
+<html lang="te">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -8,7 +8,7 @@
     <title>{% block title %}VSTV6 Digital Media{% endblock %}</title>
 
     <meta name="description"
-          content="{% block description %}Telugu and English news from VSTV6 Digital Media.{% endblock %}">
+          content="{% block description %}VSTV6 డిజిటల్ మీడియా తాజా తెలుగు వార్తలు.{% endblock %}">
 
     <meta name="robots" content="index,follow">
 
@@ -82,8 +82,8 @@
 
     <div class="ticker">
         <div class="ticker-inner">
-            <strong>VSTV6 NEWS</strong>
-            <span>Telugu &amp; English · Local · National · Technology</span>
+            <strong>VSTV6 వార్తలు</strong>
+            <span>తెలంగాణ · జాతీయం · క్రీడలు · వ్యాపారం · సాంకేతికం</span>
         </div>
     </div>
 </header>
@@ -125,11 +125,11 @@
         </section>
 
         <section class="footer-column">
-            <h3>Explore</h3>
+            <h3>News</h3>
             <a href="{{ url_for('public.home') }}">Home</a>
             <a href="{{ url_for('public.category', slug='telangana') }}">Telangana News</a>
             <a href="{{ url_for('public.category', slug='national') }}">National News</a>
-            <a href="{{ url_for('public.category', slug='technology') }}">Technology</a>
+            <a href="{{ url_for('public.category', slug='technology') }}">Technology News</a>
         </section>
 
         <section class="footer-column">
@@ -145,7 +145,7 @@
 
     <div class="footer-bottom">
         <span>&copy; {{ now.year }} VSTV6 Digital Media. All rights reserved.</span>
-        <span>Telugu &amp; English News</span>
+        <span>Telugu News</span>
     </div>
 </footer>
 

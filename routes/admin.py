@@ -172,12 +172,28 @@ def _save_article(article):
 @login_required
 def dashboard():
     counts = {
-        "all": Article.query.count(),
-        "draft": Article.query.filter_by(status="draft").count(),
-        "published": Article.query.filter_by(status="published").count(),
+        "all": Article.query.filter_by(language="te").count(),
+        "draft": Article.query.filter_by(
+            status="draft",
+            language="te",
+        ).count(),
+        "published": Article.query.filter_by(
+            status="published",
+            language="te",
+        ).count(),
     }
 
-    articles = Article.query.order_by(Article.id.desc()).limit(8).all()
+    articles = (
+        Article.query
+        .filter(
+            Article.language == "te",
+            Article.title_te.isnot(None),
+            Article.title_te != "",
+        )
+        .order_by(Article.id.desc())
+        .limit(8)
+        .all()
+    )
     category_count = Category.query.count()
     unread_messages = ContactMessage.query.filter_by(is_read=False).count()
 
@@ -204,7 +220,7 @@ def rss_automation():
 
     return render_template(
         "admin/rss_automation.html",
-        feeds=configured_feeds(),
+        feeds=list(configured_feeds),
         latest=latest,
         runs=runs,
     )
@@ -258,17 +274,16 @@ def mark_message_read(message_id):
 @login_required
 def articles():
     status = request.args.get("status", "").strip()
-    language = request.args.get("language", "").strip()
 
-    query = Article.query
+    query = Article.query.filter(
+        Article.language == "te",
+        Article.title_te.isnot(None),
+        Article.title_te != "",
+    )
 
     # Filter by publication status.
     if status in {"draft", "published"}:
         query = query.filter_by(status=status)
-
-    # Filter by language.
-    if language in {"en", "te", "both"}:
-        query = query.filter_by(language=language)
 
     article_list = query.order_by(Article.id.desc()).all()
 
@@ -276,7 +291,7 @@ def articles():
         "admin/articles.html",
         articles=article_list,
         selected_status=status,
-        selected_language=language,
+        selected_language="te",
     )
 
 
@@ -366,3 +381,24 @@ def delete_article(article_id):
         flash("Could not delete the article.", "danger")
 
     return redirect(url_for("admin.articles"))
+from flask import send_file
+from io import BytesIO
+
+from services.newspaper_pdf import generate_newspaper_pdf
+
+
+@admin_bp.get("/newspaper/download")
+@login_required
+def download_newspaper():
+    try:
+        pdf_bytes = generate_newspaper_pdf()
+
+        return send_file(
+            BytesIO(pdf_bytes),
+            mimetype="application/pdf",
+            as_attachment=True,
+            download_name="vstv6-telugu-newspaper.pdf",
+        )
+
+    except (ValueError, RuntimeError) as exc:
+        return str(exc), 400

@@ -249,7 +249,7 @@
 
 .lead-story {
     display: grid;
-    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
     align-items: start;
     gap: 28px;
     padding-bottom: 28px;
@@ -279,6 +279,11 @@
     font-size: 15px;
     line-height: 1.95;
     overflow-wrap: anywhere;
+    text-align: justify;
+}
+
+.story-body {
+    white-space: pre-line;
     text-align: justify;
 }
 
@@ -579,7 +584,7 @@
     .edition-bar,
     .lead-story,
     .story-card {
-        break-inside: avoid;
+        break-inside: auto;
     }
 
     .newspaper-masthead {
@@ -707,40 +712,24 @@
             <article class="lead-story">
 
                 <div class="lead-content">
-
-                    <span class="story-category">
-                        {{ lead.category.name_en if lead.category else 'Top News' }}
-                    </span>
-
                     <h2>
-                        {{ lead.title_te or lead.title_en or 'VSTV6 News' }}
+                        {{ lead.telugu_title }}
                     </h2>
 
-                    {% if lead.summary_te or lead.summary_en %}
-                    <p>
-                        {{ lead.summary_te or lead.summary_en }}
-                    </p>
-                    {% elif lead.body_te or lead.body_en %}
-                    <p>
-                        {{ (lead.body_te or lead.body_en)|striptags|truncate(450) }}
-                    </p>
-                    {% endif %}
-
-                    <div class="story-meta">
-                        VSTV6 Digital Media
-                    </div>
-
-                </div>
-
-                <div class="lead-image-container">
                     {% if lead.image_url %}
                     <img
-                        class="story-image"
+                        class="story-image lead-story-image"
                         src="{{ lead.image_url }}"
-                        alt="{{ lead.title_te or lead.title_en }}"
+                        alt="{{ lead.telugu_title }}"
                         loading="eager"
                         onerror="this.style.display='none'"
                     >
+                    {% endif %}
+
+                    {% if article_bodies.get(lead.id) %}
+                    <div class="story-body">
+                        {{ article_bodies.get(lead.id) }}
+                    </div>
                     {% endif %}
                 </div>
 
@@ -752,38 +741,25 @@
 
                 {% for article in selected_articles[1:] %}
                 <article class="story-card">
-
-                    <span class="story-category">
-                        {{ article.category.name_en if article.category else 'News' }}
-                    </span>
-
                     <h3>
-                        {{ article.title_te or article.title_en or 'VSTV6 News' }}
+                        {{ article.telugu_title }}
                     </h3>
 
                     {% if article.image_url %}
                     <img
                         class="story-image"
                         src="{{ article.image_url }}"
-                        alt="{{ article.title_te or article.title_en }}"
+                        alt="{{ article.telugu_title }}"
                         loading="lazy"
                         onerror="this.style.display='none'"
                     >
                     {% endif %}
 
-                    {% if article.summary_te or article.summary_en %}
-                    <p>
-                        {{ article.summary_te or article.summary_en }}
-                    </p>
-                    {% elif article.body_te or article.body_en %}
-                    <p>
-                        {{ (article.body_te or article.body_en)|striptags|truncate(300) }}
-                    </p>
-                    {% endif %}
-
-                    <div class="story-meta">
-                        VSTV6 Digital Media
+                    {% if article_bodies.get(article.id) %}
+                    <div class="story-body">
+                        {{ article_bodies.get(article.id) }}
                     </div>
+                    {% endif %}
 
                 </article>
                 {% endfor %}

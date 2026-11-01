@@ -39,11 +39,15 @@ The initial Alembic migration is included in `migrations/`. For later schema cha
 Open http://127.0.0.1:5000. Admin login: `/auth/login`; dashboard: `/admin`.
 
 ## RSS intake
-Set comma-separated HTTPS RSS URLs in `RSS_FEEDS`, create admin and seed categories first, then run:
+Set comma-separated HTTPS **Telugu news** RSS URLs in `RSS_FEEDS`, create an active admin and seed categories first, then run:
 ```powershell
 flask collect-rss
 ```
-RSS stories become drafts only. An admin must verify, write original copy, and publish manually. Do not republish full copyrighted articles. For daily collection, configure Windows Task Scheduler to run `flask collect-rss` from the project folder with the virtual environment Python.
+The Render blueprint includes a cron service that runs this command at the start of every hour (UTC). Configure the cron service's `DATABASE_URL`, `RSS_FEEDS`, and optional `MYSQL_SSL_CA` environment variables in Render; use the same database as the web service. Set `RSS_FEEDS` to Telugu feeds, not English-only feeds. The cron service needs its own `SECRET_KEY` and can use the generated value.
+
+RSS stories are saved as drafts only; articles without Telugu script in the headline or full body are skipped. Public news pages and newspaper editions likewise require Telugu script in the headline and full body, while mixed-language stories containing Telugu words are allowed. English-only summaries are omitted. No automatic translation is performed. An admin must review, write original copy, and publish manually. Do not republish full copyrighted articles. For local hourly collection, configure Windows Task Scheduler to run `flask collect-rss` hourly from the project folder using the virtual environment Python.
+
+GitHub Actions also schedules collection at 17 minutes past every hour (UTC). Add repository Actions secrets named `DATABASE_URL`, `RSS_FEEDS`, and `SECRET_KEY`; add `MYSQL_SSL_CA` if the database requires a custom CA certificate. Use the same database and Telugu feed URLs as the web app. GitHub scheduled runs can be delayed, especially during periods of high Actions load. Enable only one hosted scheduler (Render or GitHub Actions) to avoid polling the same feeds twice each hour.
 
 ## Routes
 `/`, `/news/<slug>`, `/category/<slug>`, `/search?q=...`, `/auth/login`, `/admin`, `/sitemap.xml`, `/robots.txt`, `/feed.xml`.

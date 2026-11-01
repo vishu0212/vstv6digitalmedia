@@ -1,3 +1,72 @@
-{% extends "base.html" %}{% block title %}{{ article.title_en }} | VSTV6{% endblock %}{% block description %}{{ article.summary_en }}{% endblock %}
-{% block head %}<script type="application/ld+json">{"@context":"https://schema.org","@type":"NewsArticle","headline":{{ article.title_en|tojson }},"description":{{ article.summary_en|tojson }},"datePublished":{{ article.published_at.isoformat()|tojson }},"dateModified":{{ article.updated_at.isoformat()|tojson }},"author":{"@type":"Person","name":{{ article.author.display_name|tojson }}},"publisher":{"@type":"Organization","name":"VSTV6 Digital Media"},"mainEntityOfPage":{{ request.base_url|tojson }}{% if article.image_url %},"image":[{{ article.image_url|tojson }}]{% endif %}}</script>{% endblock %}
-{% block content %}<article class="article panel"><p class="eyebrow">{{ article.category.name_en }}</p><h1>{{ article.title_te or article.title_en }}</h1>{% if article.title_te %}<h2>{{ article.title_en }}</h2>{% endif %}<p class="summary">{{ article.summary_te or article.summary_en }}</p><small>By {{ article.author.display_name }} · {{ article.published_at.strftime('%d %B %Y, %I:%M %p') }}</small>{% if article.image_url %}<img class="article-img" src="{{ article.image_url }}" alt="{{ article.title_en }}">{% endif %}{% if article.body_te %}<div class="body" lang="te">{{ article.body_te }}</div>{% endif %}<div class="body" lang="en">{{ article.body_en }}</div>{% if article.source_url %}<p>Source reference: <a rel="nofollow noopener noreferrer" href="{{ article.source_url }}">{{ article.source_name or 'Source' }}</a></p>{% endif %}</article>{% endblock %}
+{% extends "base.html" %}
+
+{% block title %}{{ article.telugu_title }} | VSTV6 డిజిటల్ మీడియా{% endblock %}
+{% block description %}{{ article.telugu_summary or article.telugu_title }}{% endblock %}
+
+{% block head %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "NewsArticle",
+  "inLanguage": "te",
+  "headline": {{ article.telugu_title|tojson }},
+  "description": {{ (article.telugu_summary or article.telugu_title)|tojson }},
+  "datePublished": {{ article.published_at.isoformat()|tojson if article.published_at else "null" }},
+  "dateModified": {{ article.updated_at.isoformat()|tojson if article.updated_at else "null" }},
+  "author": {"@type": "Person", "name": {{ (article.telugu_author_name or "VSTV6")|tojson }}},
+  "publisher": {"@type": "Organization", "name": "VSTV6 డిజిటల్ మీడియా"},
+  "mainEntityOfPage": {{ request.base_url|tojson }}
+  {% if article.image_url %},
+  "image": [{{ article.image_url|tojson }}]
+  {% endif %}
+}
+</script>
+{% endblock %}
+
+{% block content %}
+<article class="article panel" lang="te">
+    {% if article.telugu_category_name %}
+    <p class="eyebrow">{{ article.telugu_category_name }}</p>
+    {% endif %}
+
+    <h1>{{ article.telugu_title }}</h1>
+
+    {% if article.telugu_summary %}
+    <p class="summary">{{ article.telugu_summary }}</p>
+    {% endif %}
+
+    <small>
+        {% if article.telugu_author_name %}
+        {{ article.telugu_author_name }}
+        {% endif %}
+        {% if article.published_at %}
+        · {{ article.published_at.strftime('%d-%m-%Y') }}
+        {% endif %}
+    </small>
+
+    {% if article.image_url %}
+    <img class="article-img"
+         src="{{ article.image_url }}"
+         alt="{{ article.telugu_title }}">
+    {% endif %}
+
+    <div class="body">
+        {% set body = article_body or article.telugu_body or '' %}
+        {% for paragraph in body.replace('\r\n', '\n').replace('\r', '\n').split('\n') %}
+            {% if paragraph.strip() %}
+            <p>{{ paragraph.strip() }}</p>
+            {% endif %}
+        {% endfor %}
+    </div>
+
+    {% if article.source_url %}
+    <p>
+        వార్తా మూలం:
+        <a rel="nofollow noopener noreferrer"
+           href="{{ article.source_url }}">
+            అసలు వార్త
+        </a>
+    </p>
+    {% endif %}
+</article>
+{% endblock %}

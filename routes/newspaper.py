@@ -16,7 +16,11 @@ from flask_login import current_user, login_required
 
 from extensions import db
 from models import Article
-from services.newspaper_pdf import create_newspaper_pdf
+from services.newspaper_pdf import (
+    create_newspaper_pdf,
+    get_article_body,
+    prepare_articles,
+)
 
 
 newspaper_bp = Blueprint(
@@ -36,17 +40,18 @@ def _require_admin():
 
 
 def _get_published_articles():
-    """Return published articles in newest-first order."""
-    return (
+    """Return published Telugu articles with body text, newest first."""
+    articles = (
         Article.query
         .filter_by(status="published")
         .order_by(Article.id.desc())
         .all()
     )
+    return prepare_articles(articles)
 
 
 def _get_selected_articles(raw_ids):
-    """Validate submitted IDs and return only published articles."""
+    """Validate IDs and return only published Telugu articles."""
     selected_ids = []
 
     for raw_id in raw_ids:
@@ -61,7 +66,7 @@ def _get_selected_articles(raw_ids):
     if not selected_ids:
         return []
 
-    articles = (
+    queried_articles = (
         Article.query
         .filter(
             Article.id.in_(selected_ids),
@@ -69,6 +74,7 @@ def _get_selected_articles(raw_ids):
         )
         .all()
     )
+    articles = prepare_articles(queried_articles)
 
     # Keep the order chosen by the user.
     article_by_id = {article.id: article for article in articles}
@@ -122,12 +128,17 @@ def preview():
         return render_template(
             "admin/newspaper/preview.html",
             selected_articles=[],
+            article_bodies={},
             edition_date=date.today().isoformat(),
         )
 
     return render_template(
         "admin/newspaper/preview.html",
         selected_articles=selected_articles,
+        article_bodies={
+            article.id: get_article_body(article)
+            for article in selected_articles
+        },
         edition_date=date.today().isoformat(),
     )
 

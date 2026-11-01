@@ -40,12 +40,20 @@ def sitemap():
 
     articles = (
         Article.query
-        .filter_by(status="published")
+        .filter(
+            Article.status == "published",
+            Article.language == "te",
+            Article.title_te.isnot(None),
+            Article.title_te != "",
+        )
         .order_by(Article.published_at.desc())
         .all()
     )
 
     for article in articles:
+        if not article.has_telugu_story:
+            continue
+
         article_path = url_for(
             "articles.detail",
             slug=article.slug
@@ -76,13 +84,20 @@ def feed():
 
     articles = (
         Article.query
-        .filter_by(status="published")
+        .filter(
+            Article.status == "published",
+            Article.language == "te",
+            Article.title_te.isnot(None),
+            Article.title_te != "",
+        )
         .order_by(Article.published_at.desc())
-        .limit(50)
-        .all()
+        .yield_per(100)
     )
 
     for article in articles:
+        if not article.has_telugu_story:
+            continue
+
         dt = article.published_at
 
         if dt and dt.tzinfo is None:
@@ -93,12 +108,14 @@ def feed():
         )
 
         items.append({
-            "title": article.title_en,
+            "title": article.telugu_title,
             "link": article_url,
             "guid": article_url,
-            "description": article.summary_en or "",
+            "description": article.telugu_summary or "",
             "pubDate": format_datetime(dt) if dt else "",
         })
+        if len(items) >= 50:
+            break
 
     return (
         render_template(

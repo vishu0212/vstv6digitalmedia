@@ -1,4 +1,4 @@
-```html
+
 {% extends "base.html" %}
 
 {% block title %}Newspaper Generator | VSTV6 Digital Media{% endblock %}
@@ -332,7 +332,7 @@
 
                         <span>
                             <span class="article-title">
-                                {{ article.title_te or article.title_en or "Untitled article" }}
+                                {{ article.telugu_title }}
                             </span>
 
                             <span class="article-meta">
@@ -346,7 +346,7 @@
                                 · Article ID: {{ article.id }}
                             </span>
 
-                            {% set summary = article.summary_te or article.summary_en %}
+                            {% set summary = article.telugu_summary %}
                             {% if summary %}
                             <span class="article-summary">
                                 {{ summary|truncate(220) }}
@@ -390,7 +390,7 @@
         {% for article in selected_articles %}
         <article class="selected-article">
             <h3>
-                {{ article.title_te or article.title_en or "Untitled article" }}
+                {{ article.telugu_title }}
             </h3>
 
             {% if article.image_url %}
@@ -402,7 +402,7 @@
             {% endif %}
 
             <p>
-                {{ article.summary_te or article.summary_en or "" }}
+                {{ article.telugu_summary or "" }}
             </p>
         </article>
         {% endfor %}
@@ -471,4 +471,3 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 </script>
 {% endblock %}
-```

@@ -6,7 +6,7 @@
     <p>Monitor scheduled RSS collection. Articles are saved as drafts and
        are not automatically published.</p>
 
-    <p><strong>Expected schedule:</strong> Hourly via GitHub Actions.</p>
+    <p><strong>Expected schedule:</strong> Every hour at 17 minutes past the hour (UTC) via GitHub Actions. Scheduled runs may be delayed by GitHub.</p>
     <p><strong>Latest recorded status:</strong>
         {% if latest %}
             {{ latest.status }}

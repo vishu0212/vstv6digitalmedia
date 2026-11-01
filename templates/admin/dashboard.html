@@ -157,12 +157,12 @@
                     {% for article in articles %}
                     <tr>
                         <td class="article-headline">
-                            {{ article.title_te or article.title_en or 'Untitled article' }}
+                            {{ article.title_te or 'శీర్షిక లేదు' }}
                         </td>
 
                         <td>
-                            {{ article.category.name_en
-                               if article.category else 'Uncategorized' }}
+                            {{ article.category.name_te
+                               if article.category else 'వర్గీకరించలేదు' }}
                         </td>
 
                         <td>

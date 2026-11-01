@@ -1,4 +1,3 @@
-
 {% extends "base.html" %}
 
 {% block title %}Manage Articles | VSTV6 Digital Media{% endblock %}
@@ -29,41 +28,19 @@
 
     <div class="news-filter-bar">
         <div class="news-filter-tabs">
-            <a href="{{ url_for('admin.articles', language=selected_language or None) }}"
+            <a href="{{ url_for('admin.articles') }}"
                class="{{ 'selected' if not selected_status else '' }}">
                 All Articles
             </a>
 
-            <a href="{{ url_for('admin.articles', status='draft', language=selected_language or None) }}"
+            <a href="{{ url_for('admin.articles', status='draft') }}"
                class="{{ 'selected' if selected_status == 'draft' else '' }}">
                 Drafts
             </a>
 
-            <a href="{{ url_for('admin.articles', status='published', language=selected_language or None) }}"
+            <a href="{{ url_for('admin.articles', status='published') }}"
                class="{{ 'selected' if selected_status == 'published' else '' }}">
                 Published
-            </a>
-        </div>
-
-        <div class="news-filter-tabs">
-            <a href="{{ url_for('admin.articles', status=selected_status or None) }}"
-               class="{{ 'selected' if not selected_language else '' }}">
-                All Languages
-            </a>
-
-            <a href="{{ url_for('admin.articles', status=selected_status or None, language='en') }}"
-               class="{{ 'selected' if selected_language == 'en' else '' }}">
-                English
-            </a>
-
-            <a href="{{ url_for('admin.articles', status=selected_status or None, language='te') }}"
-               class="{{ 'selected' if selected_language == 'te' else '' }}">
-                తెలుగు
-            </a>
-
-            <a href="{{ url_for('admin.articles', status=selected_status or None, language='both') }}"
-               class="{{ 'selected' if selected_language == 'both' else '' }}">
-                Both
             </a>
         </div>
 
@@ -112,21 +89,7 @@
                                 {% endif %}
 
                                 <div class="news-article-info">
-                                    <strong>
-                                        {% if a.language == 'te' %}
-                                            {{ a.title_te or a.title_en }}
-                                        {% else %}
-                                            {{ a.title_en }}
-                                        {% endif %}
-                                    </strong>
-
-                                    {% if a.language == 'both' and a.title_te %}
-                                    <span>{{ a.title_te }}</span>
-                                    {% elif a.language == 'te' and a.title_en != a.title_te %}
-                                    <span>{{ a.title_en }}</span>
-                                    {% elif a.language == 'en' and a.title_te %}
-                                    <span>{{ a.title_te }}</span>
-                                    {% endif %}
+                                    <strong>{{ a.title_te }}</strong>
 
                                     <small>Article #{{ a.id }}</small>
                                 </div>
@@ -134,20 +97,12 @@
                         </td>
 
                         <td>
-                            {% if a.language == 'te' %}
-                                తెలుగు
-                            {% elif a.language == 'en' %}
-                                English
-                            {% elif a.language == 'both' %}
-                                Both
-                            {% else %}
-                                {{ a.language }}
-                            {% endif %}
+                            తెలుగు
                         </td>
 
                         <td>
                             <span class="news-category">
-                                {{ a.category.name_en if a.category else 'Uncategorized' }}
+                                {{ a.category.name_te if a.category else 'వర్గీకరించలేదు' }}
                             </span>
                         </td>
 

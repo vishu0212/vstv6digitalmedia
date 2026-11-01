@@ -147,7 +147,7 @@ def create_app():
     def collect_rss():
         from services.news_collector import collect_feeds
 
-        print(f"New draft articles: {collect_feeds(app)}")
+        print(f"New draft articles: {collect_feeds()}")
 
     return app
 

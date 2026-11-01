@@ -83,7 +83,7 @@ def extract_article_text(url: str | None) -> str | None:
             url=url,
             include_comments=False,
             include_tables=True,
-            favor_precision=True,
+            favor_recall=True,
         )
 
         if not extracted:

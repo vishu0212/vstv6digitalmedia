@@ -33,5 +33,7 @@ jobs:
       - name: Run RSS collector
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          RSS_FEEDS: ${{ secrets.RSS_FEEDS }}
           SECRET_KEY: ${{ secrets.SECRET_KEY }}
+          MYSQL_SSL_CA: ${{ secrets.MYSQL_SSL_CA }}
         run: python -m flask --app app collect-rss

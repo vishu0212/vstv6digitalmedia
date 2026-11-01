@@ -1,1 +1,23 @@
-{% extends "base.html" %}{% block title %}{{ category.name_en }} News | VSTV6{% endblock %}{% block content %}<h1>{{ category.name_en }} / {{ category.name_te }}</h1><div class="grid">{% for a in articles %}<article class="card"><div class="pad"><h3><a href="{{ url_for('articles.detail',slug=a.slug) }}">{{ a.title_te or a.title_en }}</a></h3><p>{{ a.summary_te or a.summary_en }}</p></div></article>{% else %}<p>No published stories in this category.</p>{% endfor %}</div>{% endblock %}
+{% extends "base.html" %}
+{% block title %}{{ category.name_te }} వార్తలు | VSTV6{% endblock %}
+{% block content %}
+<h1>{{ category.name_te }} వార్తలు</h1>
+<div class="grid">
+    {% for article in articles %}
+    <article class="card">
+        <div class="pad">
+            <h3>
+                <a href="{{ url_for('articles.detail', slug=article.slug) }}">
+                    {{ article.telugu_title }}
+                </a>
+            </h3>
+            {% if article.telugu_summary %}
+            <p>{{ article.telugu_summary }}</p>
+            {% endif %}
+        </div>
+    </article>
+    {% else %}
+    <p>ఈ విభాగంలో ప్రచురించిన వార్తలు లేవు.</p>
+    {% endfor %}
+</div>
+{% endblock %}

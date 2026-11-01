@@ -14,4 +14,19 @@ services:
       - key: COOKIE_SECURE
         value: "1"
       - key: RSS_FEEDS
-        value: "https://feeds.bbci.co.uk/news/world/rss.xml"
+        sync: false
+  - type: cron
+    name: vstv6-rss-hourly
+    runtime: python
+    schedule: "0 * * * *"
+    buildCommand: pip install -r requirements.txt
+    startCommand: flask --app app collect-rss
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: RSS_FEEDS
+        sync: false
+      - key: MYSQL_SSL_CA
+        sync: false
