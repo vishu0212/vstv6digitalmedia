@@ -1,1 +1,11 @@
-<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">{% for p in pages %}<url><loc>{{ p.loc }}</loc>{% if p.lastmod %}<lastmod>{{ p.lastmod }}</lastmod>{% endif %}</url>{% endfor %}</urlset>
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9 https://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
+{% for page in pages %}
+  <url>
+    <loc>{{ page.loc|e }}</loc>
+    {% if page.lastmod %}<lastmod>{{ page.lastmod|e }}</lastmod>{% endif %}
+  </url>
+{% endfor %}
+</urlset>
