@@ -10,16 +10,19 @@ class Config:
     SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
-    # Configure PyMySQL SSL correctly.
+    # Apply MySQL-specific SSL options only to MySQL connections.
     ca_path = os.getenv("MYSQL_SSL_CA")
 
-    SQLALCHEMY_ENGINE_OPTIONS = {
+    engine_options = {
         "pool_pre_ping": True,
         "pool_recycle": 280,
-        "connect_args": {
-            "ssl": {"ca": ca_path} if ca_path else {}
-        },
     }
+    if (SQLALCHEMY_DATABASE_URI or "").startswith("mysql"):
+        engine_options["connect_args"] = {
+            "ssl": {"ca": ca_path} if ca_path else {}
+        }
+
+    SQLALCHEMY_ENGINE_OPTIONS = engine_options
 
     # Website information
     SITE_NAME = os.getenv("SITE_NAME", "VSTV6 Digital Media")
