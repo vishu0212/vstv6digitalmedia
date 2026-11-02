@@ -1,11 +1,14 @@
 
 import re
 import logging
+import os
+import uuid
 from datetime import datetime, timezone
 from urllib.parse import urlparse
 
 from flask import (
     Blueprint,
+    current_app,
     render_template,
     request,
     redirect,
@@ -30,7 +33,7 @@ def _require_admin():
 
 
 def _make_slug(value):
-    """Create a URL-friendly slug from the English title."""
+    """Create a URL-friendly slug from an article headline."""
     value = value.strip().lower()
     value = re.sub(r"[^a-z0-9]+", "-", value)
     return value.strip("-")[:220].strip("-") or "news"
@@ -84,43 +87,81 @@ def _article_form(article=None):
     )
 
 
+def _image_extension(upload):
+    """Return a safe image extension only when the file has a known signature."""
+    header = upload.stream.read(12)
+    upload.stream.seek(0)
+
+    if header.startswith(b"\xff\xd8\xff"):
+        return ".jpg"
+    if header.startswith(b"\x89PNG\r\n\x1a\n"):
+        return ".png"
+    if header.startswith((b"GIF87a", b"GIF89a")):
+        return ".gif"
+    if header.startswith(b"RIFF") and header[8:12] == b"WEBP":
+        return ".webp"
+    return None
+
+
+def _delete_uploaded_image(image_url):
+    """Delete an image only when it is one of this app's uploaded files."""
+    prefix = "/uploads/"
+    if not image_url or not image_url.startswith(prefix):
+        return
+
+    filename = image_url[len(prefix):]
+    if not filename or os.path.basename(filename) != filename:
+        return
+
+    image_path = os.path.join(current_app.config["UPLOAD_FOLDER"], filename)
+    if os.path.isfile(image_path):
+        try:
+            os.remove(image_path)
+        except OSError:
+            logger.exception("Could not remove replaced article image %s.", image_path)
+
+
 def _save_article(article):
     """Validate and save the article form. New articles remain drafts."""
-    title_en = request.form.get("title_en", "").strip()
     title_te = request.form.get("title_te", "").strip()
-    summary_en = request.form.get("summary_en", "").strip()
     summary_te = request.form.get("summary_te", "").strip()
-    body_en = request.form.get("body_en", "").strip()
     body_te = request.form.get("body_te", "").strip()
-    language = request.form.get("language", "both").strip()
     slug_input = request.form.get("slug", "").strip()
     source_name = request.form.get("source_name", "").strip()
     source_url = request.form.get("source_url", "").strip()
     image_url = request.form.get("image_url", "").strip()
+    image_upload = request.files.get("image_file")
+    if image_upload and not image_upload.filename:
+        image_upload = None
     category_value = request.form.get("category_id", "").strip()
 
-    if not title_en or not summary_en or not body_en:
-        flash("English title, summary, and body are required.", "danger")
+    if not title_te or not summary_te or not body_te:
+        flash("Telugu headline, summary, and article body are required.", "danger")
         return False
 
-    if len(title_en) > 220 or len(title_te) > 220:
-        flash("Titles must not exceed 220 characters.", "danger")
+    if len(title_te) > 220:
+        flash("The headline must not exceed 220 characters.", "danger")
         return False
 
-    if len(summary_en) > 500 or len(summary_te) > 500:
-        flash("Summaries must not exceed 500 characters.", "danger")
-        return False
-
-    if language not in {"en", "te", "both"}:
-        flash("Select a valid article language.", "danger")
+    if len(summary_te) > 500:
+        flash("The summary must not exceed 500 characters.", "danger")
         return False
 
     if not _valid_url(source_url):
         flash("Source URL must be a valid HTTP or HTTPS URL.", "danger")
         return False
 
-    if not _valid_url(image_url, https_only=True):
+    if image_url and not _valid_url(image_url, https_only=True):
         flash("Image URL must be a valid HTTPS URL.", "danger")
+        return False
+
+    if image_upload and image_url:
+        flash("Choose an image upload or an HTTPS image URL, not both.", "danger")
+        return False
+
+    image_extension = _image_extension(image_upload) if image_upload else None
+    if image_upload and image_extension is None:
+        flash("Upload a valid JPG, PNG, GIF, or WEBP image.", "danger")
         return False
 
     try:
@@ -134,19 +175,42 @@ def _save_article(article):
         flash("The selected category does not exist.", "danger")
         return False
 
-    article.title_en = title_en
+    previous_image_url = article.image_url
+    uploaded_image_path = None
+    if image_upload:
+        filename = f"{uuid.uuid4().hex}{image_extension}"
+        upload_dir = current_app.config["UPLOAD_FOLDER"]
+        uploaded_image_path = os.path.join(upload_dir, filename)
+        try:
+            os.makedirs(upload_dir, exist_ok=True)
+            image_upload.save(uploaded_image_path)
+        except OSError:
+            logger.exception("Could not store uploaded article image.")
+            if os.path.isfile(uploaded_image_path):
+                try:
+                    os.remove(uploaded_image_path)
+                except OSError:
+                    logger.exception(
+                        "Could not remove incomplete article image %s.",
+                        uploaded_image_path,
+                    )
+            flash("Could not save the uploaded image.", "danger")
+            return False
+        image_url = url_for("uploaded_image", filename=filename)
+
+    article.title_en = None
     article.title_te = title_te or None
-    article.summary_en = summary_en
+    article.summary_en = None
     article.summary_te = summary_te or None
-    article.body_en = body_en
+    article.body_en = None
     article.body_te = body_te or None
-    article.language = language
+    article.language = "te"
     article.category_id = category.id
     article.source_name = source_name or None
     article.source_url = source_url or None
-    article.image_url = image_url or None
+    article.image_url = image_url or previous_image_url
 
-    requested_slug = slug_input or title_en
+    requested_slug = slug_input or title_te
     article.slug = _unique_slug(requested_slug, article_id=article.id)
 
     if article.id is None:
@@ -159,9 +223,20 @@ def _save_article(article):
         db.session.commit()
     except Exception:
         db.session.rollback()
+        if uploaded_image_path and os.path.isfile(uploaded_image_path):
+            try:
+                os.remove(uploaded_image_path)
+            except OSError:
+                logger.exception(
+                    "Could not remove unsaved article image %s.",
+                    uploaded_image_path,
+                )
         logger.exception("Could not save article.")
         flash("Could not save the article. Check the server log.", "danger")
         return False
+
+    if previous_image_url != article.image_url:
+        _delete_uploaded_image(previous_image_url)
 
     return True
 

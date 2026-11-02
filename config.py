@@ -40,7 +40,11 @@ class Config:
     REMEMBER_COOKIE_SECURE = os.getenv("COOKIE_SECURE", "0") == "1"
 
     # Request and form limits
-    MAX_CONTENT_LENGTH = 2 * 1024 * 1024
+    MAX_CONTENT_LENGTH = 8 * 1024 * 1024
+    UPLOAD_FOLDER = os.getenv(
+        "UPLOAD_FOLDER",
+        os.path.join(os.path.dirname(__file__), "static", "uploads"),
+    )
     WTF_CSRF_TIME_LIMIT = 3600
 
     # RSS feeds

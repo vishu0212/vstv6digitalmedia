@@ -53,7 +53,7 @@ GitHub Actions also schedules collection at 17 minutes past every hour (UTC). Ad
 `/`, `/news/<slug>`, `/category/<slug>`, `/search?q=...`, `/auth/login`, `/admin`, `/sitemap.xml`, `/robots.txt`, `/feed.xml`.
 
 ## Security
-Use HTTPS in production and set `COOKIE_SECURE=1`. Never use Flask debug mode publicly. Use a unique secret, least-privilege DB user, backups, updated dependencies, and restricted admin access. CSRF protection is enabled. User article content is rendered as escaped plain text. This starter does not include rate limiting, MFA, audit logs, or image upload management; add them before a high-traffic launch.
+Use HTTPS in production and set `COOKIE_SECURE=1`. Never use Flask debug mode publicly. Use a unique secret, least-privilege DB user, backups, updated dependencies, and restricted admin access. CSRF protection is enabled. User article content is rendered as escaped plain text. Article editors can upload JPG, PNG, GIF, or WEBP images up to 8 MB; configure `UPLOAD_FOLDER` to a persistent disk path in production because app-local files may be removed during redeploys. This starter does not include rate limiting, MFA, or audit logs; add them before a high-traffic launch.
 
 ## Free hosting
 Free providers can sleep, restrict databases, or remove ephemeral files. Do not store MySQL data on an app server's temporary filesystem. Verify current database/network limits with the provider before deployment.

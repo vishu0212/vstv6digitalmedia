@@ -30,7 +30,7 @@ class Article(db.Model):
     id = db.Column(db.Integer, primary_key=True)
 
     # Titles
-    title_en = db.Column(db.String(220), nullable=False)
+    title_en = db.Column(db.String(220))
     title_te = db.Column(db.String(220))
 
     # URL slug
@@ -42,11 +42,11 @@ class Article(db.Model):
     )
 
     # Summaries
-    summary_en = db.Column(db.String(500), nullable=False)
+    summary_en = db.Column(db.String(500))
     summary_te = db.Column(db.String(500))
 
     # Full article content
-    body_en = db.Column(db.Text, nullable=False)
+    body_en = db.Column(db.Text)
     body_te = db.Column(db.Text)
 
     # Language: en, te, or both
@@ -124,17 +124,17 @@ class Article(db.Model):
     @property
     def display_title(self):
         """Return the Telugu title when available."""
-        return self.title_te or self.title_en
+        return self.title_te or self.title_en or ""
 
     @property
     def display_summary(self):
         """Return the Telugu summary when available."""
-        return self.summary_te or self.summary_en
+        return self.summary_te or self.summary_en or ""
 
     @property
     def display_body(self):
         """Return the Telugu body when available."""
-        return self.body_te or self.body_en
+        return self.body_te or self.body_en or ""
 
     @property
     def telugu_summary(self):

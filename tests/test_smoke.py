@@ -1,4 +1,5 @@
 import os
+import io
 import pytest
 from types import SimpleNamespace
 
@@ -26,6 +27,75 @@ def test_sitemap(app):
 
 def test_login(app):
     assert app.test_client().get("/auth/login").status_code == 200
+
+
+def test_telugu_article_form_saves_draft_with_uploaded_image(app, tmp_path):
+    from extensions import db
+    from models import Article, Category, User
+
+    app.config["UPLOAD_FOLDER"] = str(tmp_path / "uploads")
+    with app.app_context():
+        author = User(
+            email="editor@example.com",
+            display_name="Editor",
+            password_hash="test-hash",
+        )
+        category = Category(
+            name_en="National",
+            name_te="జాతీయం",
+            slug="national",
+        )
+        db.session.add_all([author, category])
+        db.session.commit()
+        author_id = author.id
+        category_id = category.id
+
+    client = app.test_client()
+    with client.session_transaction() as session:
+        session["_user_id"] = str(author_id)
+        session["_fresh"] = True
+
+    form_page = client.get("/admin/articles/new")
+    assert form_page.status_code == 200
+    assert b'name="title_en"' not in form_page.data
+    assert b'name="summary_en"' not in form_page.data
+    assert b'name="body_en"' not in form_page.data
+    assert b'name="image_file"' in form_page.data
+
+    response = client.post(
+        "/admin/articles/new",
+        data={
+            "title_te": "తెలుగు వార్త శీర్షిక",
+            "summary_te": "తెలుగు వార్తా సారాంశం",
+            "body_te": "తెలుగు పూర్తి వార్త.",
+            "category_id": str(category_id),
+            "image_file": (
+                io.BytesIO(
+                    b"\x89PNG\r\n\x1a\n"
+                    b"\x00\x00\x00\rIHDR"
+                    b"\x00\x00\x00\x01\x00\x00\x00\x01"
+                    b"\x08\x06\x00\x00\x00"
+                ),
+                "featured.png",
+            ),
+        },
+        content_type="multipart/form-data",
+    )
+
+    assert response.status_code == 302
+    with app.app_context():
+        article = Article.query.one()
+        assert article.status == "draft"
+        assert article.language == "te"
+        assert article.title_en is None
+        assert article.summary_en is None
+        assert article.body_en is None
+        assert article.title_te == "తెలుగు వార్త శీర్షిక"
+        assert article.image_url.startswith("/uploads/")
+        uploaded_file = tmp_path / "uploads" / article.image_url.split("/")[-1]
+        assert uploaded_file.is_file()
+    assert client.get(article.image_url).status_code == 200
+
 
 def test_detect_language_uses_telugu_article_body():
     from services.news_collector import detect_language

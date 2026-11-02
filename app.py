@@ -55,6 +55,10 @@ def create_app():
             mimetype="text/html",
         )
 
+    @app.route("/uploads/<path:filename>")
+    def uploaded_image(filename):
+        return send_from_directory(app.config["UPLOAD_FOLDER"], filename)
+
     # Global template variables
     @app.context_processor
     def globals_for_templates():
