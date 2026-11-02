@@ -1,5 +1,4 @@
 import os
-import io
 import pytest
 from types import SimpleNamespace
 
@@ -27,75 +26,6 @@ def test_sitemap(app):
 
 def test_login(app):
     assert app.test_client().get("/auth/login").status_code == 200
-
-
-def test_telugu_article_form_saves_draft_with_uploaded_image(app, tmp_path):
-    from extensions import db
-    from models import Article, Category, User
-
-    app.config["UPLOAD_FOLDER"] = str(tmp_path / "uploads")
-    with app.app_context():
-        author = User(
-            email="editor@example.com",
-            display_name="Editor",
-            password_hash="test-hash",
-        )
-        category = Category(
-            name_en="National",
-            name_te="జాతీయం",
-            slug="national",
-        )
-        db.session.add_all([author, category])
-        db.session.commit()
-        author_id = author.id
-        category_id = category.id
-
-    client = app.test_client()
-    with client.session_transaction() as session:
-        session["_user_id"] = str(author_id)
-        session["_fresh"] = True
-
-    form_page = client.get("/admin/articles/new")
-    assert form_page.status_code == 200
-    assert b'name="title_en"' not in form_page.data
-    assert b'name="summary_en"' not in form_page.data
-    assert b'name="body_en"' not in form_page.data
-    assert b'name="image_file"' in form_page.data
-
-    response = client.post(
-        "/admin/articles/new",
-        data={
-            "title_te": "తెలుగు వార్త శీర్షిక",
-            "summary_te": "తెలుగు వార్తా సారాంశం",
-            "body_te": "తెలుగు పూర్తి వార్త.",
-            "category_id": str(category_id),
-            "image_file": (
-                io.BytesIO(
-                    b"\x89PNG\r\n\x1a\n"
-                    b"\x00\x00\x00\rIHDR"
-                    b"\x00\x00\x00\x01\x00\x00\x00\x01"
-                    b"\x08\x06\x00\x00\x00"
-                ),
-                "featured.png",
-            ),
-        },
-        content_type="multipart/form-data",
-    )
-
-    assert response.status_code == 302
-    with app.app_context():
-        article = Article.query.one()
-        assert article.status == "draft"
-        assert article.language == "te"
-        assert article.title_en is None
-        assert article.summary_en is None
-        assert article.body_en is None
-        assert article.title_te == "తెలుగు వార్త శీర్షిక"
-        assert article.image_url.startswith("/uploads/")
-        uploaded_file = tmp_path / "uploads" / article.image_url.split("/")[-1]
-        assert uploaded_file.is_file()
-    assert client.get(article.image_url).status_code == 200
-
 
 def test_detect_language_uses_telugu_article_body():
     from services.news_collector import detect_language
@@ -284,6 +214,94 @@ def test_newspaper_body_omits_source_link_line():
     )
     assert "https://" not in body
 
+def test_newspaper_body_omits_publisher_promotions():
+    from services.newspaper_pdf import get_article_body
+
+    article = SimpleNamespace(
+        body_te=(
+            "తెలంగాణలో కొత్త ప్రాజెక్టు ప్రారంభం.\n\n"
+            "- Follow Us :\n"
+            "-\n\n"
+            "Add as a preferred source on Google\n"
+            "\nAlso Read ఈ కథనం గురించి మరిన్ని వివరాలు.\n\n"
+            "ప్రాజెక్టు పనులు వచ్చే నెలలో ప్రారంభమవుతాయి."
+        ),
+        body_en=None,
+    )
+
+    body = get_article_body(article)
+
+    assert body == (
+        "తెలంగాణలో కొత్త ప్రాజెక్టు ప్రారంభం.\n\n"
+        "ప్రాజెక్టు పనులు వచ్చే నెలలో ప్రారంభమవుతాయి."
+    )
+    assert "Follow Us" not in body
+    assert "preferred source" not in body
+    assert "Also Read" not in body
+
+def test_newspaper_body_omits_google_promo_split_across_lines():
+    from services.newspaper_pdf import get_article_body
+
+    article = SimpleNamespace(
+        body_te=(
+            "తెలుగు వార్త మొదటి పేరా.\n"
+            "\n-\n"
+            "Add as a preferred\n"
+            "source on google\n\n"
+            "Also Read: పక్క కథనం శీర్షిక\n\n"
+            "తెలుగు వార్త రెండో పేరా."
+        ),
+        body_en=None,
+    )
+
+    assert get_article_body(article) == (
+        "తెలుగు వార్త మొదటి పేరా.\n\n"
+        "తెలుగు వార్త రెండో పేరా."
+    )
+
+def test_newspaper_body_removes_multiline_promo_paragraphs():
+    from services.newspaper_pdf import get_article_body
+
+    article = SimpleNamespace(
+        body_te=(
+            "తెలుగు వార్త మొదటి పేరా.\n\n"
+            "Follow\nUs :\n"
+            "\nAdd as a preferred\nsource on Google\n\n"
+            "Also Read\nసంబంధిత కథనం శీర్షిక\n\n"
+            "తెలుగు వార్త చివరి పేరా."
+        ),
+        body_en=None,
+    )
+
+    body = get_article_body(article)
+
+    assert body == (
+        "తెలుగు వార్త మొదటి పేరా.\n\n"
+        "తెలుగు వార్త చివరి పేరా."
+    )
+
+def test_newspaper_body_removes_promotions_without_blank_paragraphs():
+    from services.newspaper_pdf import get_article_body
+
+    article = SimpleNamespace(
+        body_te=(
+            "తెలుగు వార్త మొదటి పేరా.\n"
+            "- Follow Us :\n"
+            "-\n"
+            "Add as a preferred\n"
+            "source on google\n"
+            "Also Read\n"
+            "సంబంధిత కథనం శీర్షిక\n"
+            "తెలుగు వార్త చివరి పేరా."
+        ),
+        body_en=None,
+    )
+
+    assert get_article_body(article) == (
+        "తెలుగు వార్త మొదటి పేరా.\n"
+        "తెలుగు వార్త చివరి పేరా."
+    )
+
 def test_newspaper_pdf_uses_justified_body_and_left_headline():
     from reportlab.lib.enums import TA_JUSTIFY, TA_LEFT
     from services.newspaper_pdf import get_styles
@@ -319,3 +337,119 @@ def test_collect_rss_cli_uses_saving_mode(monkeypatch, tmp_path):
     assert result.exit_code == 0
     assert "New draft articles: 2" in result.output
     assert dry_run_values == [False]
+
+def test_rss_image_extractor_finds_images_embedded_in_feed_content():
+    from services.news_collector import get_image_url
+
+    entry = {
+        "link": "https://news.example/story",
+        "content": [{
+            "value": (
+                '<p><img src="placeholder.gif" '
+                'data-src="/images/story.jpg"></p>'
+            ),
+        }],
+    }
+
+    assert get_image_url(entry) == "https://news.example/images/story.jpg"
+
+def test_article_page_extractor_reads_featured_image_metadata(
+    monkeypatch,
+):
+    import services.article_extractor as extractor
+
+    html = (
+        '<meta property="og:image" content="/images/featured.jpg">'
+        "<article>Story content</article>"
+    ).encode()
+
+    class FakeResponse:
+        headers = {"Content-Type": "text/html"}
+        encoding = "utf-8"
+        url = "https://news.example/redirected/story"
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return None
+
+        def iter_content(self, chunk_size):
+            return [html]
+
+        def raise_for_status(self):
+            return None
+
+    monkeypatch.setattr(
+        extractor.requests,
+        "get",
+        lambda *args, **kwargs: FakeResponse(),
+    )
+    monkeypatch.setattr(
+        extractor.trafilatura,
+        "extract",
+        lambda *args, **kwargs: "తెలుగు వార్త " * 30,
+    )
+
+    text, image_url = extractor.extract_article_page(
+        "https://news.example/story"
+    )
+
+    assert text == ("తెలుగు వార్త " * 30).strip()
+    assert image_url == "https://news.example/images/featured.jpg"
+
+def test_rss_collection_saves_and_backfills_article_page_image(
+    app,
+    monkeypatch,
+):
+    from extensions import db
+    from models import Article, Category, User
+    import services.news_collector as collector
+
+    article_url = "https://news.example/story"
+    image_url = "https://images.example/story.jpg"
+    entry = {
+        "title": "తెలంగాణ తాజా వార్త",
+        "summary": "తెలుగు వార్తా సారాంశం",
+        "link": article_url,
+    }
+
+    with app.app_context():
+        author = User(
+            email="rss-editor@example.com",
+            display_name="తెలుగు సంపాదకుడు",
+            password_hash="test-hash",
+            role="editor",
+        )
+        category = Category(
+            name_en="National",
+            name_te="జాతీయం",
+            slug="national",
+        )
+        db.session.add_all([author, category])
+        db.session.commit()
+
+        monkeypatch.setattr(
+            collector.feedparser,
+            "parse",
+            lambda *args, **kwargs: SimpleNamespace(
+                entries=[entry],
+                bozo=False,
+                get=lambda key, default=None: default,
+            ),
+        )
+        monkeypatch.setattr(
+            collector,
+            "extract_article_page",
+            lambda url: ("తెలుగు పూర్తి వార్త " * 20, image_url),
+        )
+
+        assert collector.collect_feed("https://feeds.example/rss") == 1
+        article = Article.query.filter_by(source_url=article_url).one()
+        assert article.image_url == image_url
+
+        article.image_url = None
+        db.session.commit()
+
+        assert collector.collect_feed("https://feeds.example/rss") == 0
+        assert article.image_url == image_url

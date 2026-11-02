@@ -239,7 +239,7 @@ def get_article_summary(article) -> str:
 
 
 def get_article_body(article) -> str:
-    """Return the Telugu article body without appended source-link lines."""
+    """Return Telugu story text without source links or publisher promotions."""
     telugu_body = (getattr(article, "body_te", None) or "").strip()
     if TELUGU_CHAR_RE.search(telugu_body):
         body = telugu_body
@@ -262,6 +262,71 @@ def get_article_body(article) -> str:
         "",
         body,
     )
+    body_lines = []
+    skip_preferred_source = False
+    skip_follow_us = False
+    skip_related_title = False
+
+    for line in body.splitlines():
+        if skip_preferred_source:
+            if re.search(r"\bgoogle\b", line, flags=re.IGNORECASE):
+                skip_preferred_source = False
+            continue
+
+        if skip_follow_us:
+            skip_follow_us = False
+            if re.match(r"^\s*us\b", line, flags=re.IGNORECASE):
+                continue
+
+        if skip_related_title and line.strip():
+            skip_related_title = False
+            continue
+
+        follow_us = re.search(
+            r"\bfollow\s+us\b",
+            line,
+            flags=re.IGNORECASE,
+        )
+        if follow_us:
+            prefix = line[:follow_us.start()].rstrip(" \t:-–—•")
+            if prefix:
+                body_lines.append(prefix)
+            continue
+
+        if re.match(r"^\s*follow\s*$", line, flags=re.IGNORECASE):
+            skip_follow_us = True
+            continue
+
+        preferred_source = re.search(
+            r"\badd\s+as\s+a\s+preferred\b",
+            line,
+            flags=re.IGNORECASE,
+        )
+        if preferred_source:
+            prefix = line[:preferred_source.start()].rstrip(" \t:-–—•")
+            if prefix:
+                body_lines.append(prefix)
+            skip_preferred_source = not re.search(
+                r"\bgoogle\b",
+                line[preferred_source.end():],
+                flags=re.IGNORECASE,
+            )
+            continue
+
+        also_read = re.search(r"\balso\s+read\b", line, flags=re.IGNORECASE)
+        if also_read:
+            prefix = line[:also_read.start()].rstrip(" \t:-–—•")
+            if prefix:
+                body_lines.append(prefix)
+            skip_related_title = not line[also_read.end():].strip(" \t:-–—•")
+            continue
+
+        if line.strip() in {"-", "–", "—", "•"}:
+            continue
+
+        body_lines.append(line)
+
+    body = "\n".join(body_lines)
     body = re.sub(r"[ \t]+", " ", body)
     body = re.sub(r"\n{3,}", "\n\n", body).strip()
     return body if contains_telugu_script(body) else ""
