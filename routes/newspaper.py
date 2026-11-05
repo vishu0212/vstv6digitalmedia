@@ -1,25 +1,22 @@
 
 from datetime import date, datetime
-from io import BytesIO
 
 from flask import (
     Blueprint,
     abort,
     current_app,
-    make_response,
     render_template,
     request,
     send_file,
-    url_for,
 )
 from flask_login import current_user, login_required
 
-from extensions import db
 from models import Article
 from services.newspaper_pdf import (
     create_newspaper_pdf,
     get_article_body,
     prepare_articles,
+    remove_duplicate_title,
 )
 
 
@@ -44,7 +41,10 @@ def _get_published_articles():
     articles = (
         Article.query
         .filter_by(status="published")
-        .order_by(Article.id.desc())
+        .order_by(
+            Article.published_at.desc(),
+            Article.created_at.desc(),
+        )
         .all()
     )
     return prepare_articles(articles)
@@ -132,13 +132,19 @@ def preview():
             edition_date=date.today().isoformat(),
         )
 
+    article_bodies = {
+        article.id: remove_duplicate_title(
+            get_article_body(article),
+            getattr(article, "title_te", None)
+            or getattr(article, "telugu_title", ""),
+        )
+        for article in selected_articles
+    }
+
     return render_template(
         "admin/newspaper/preview.html",
         selected_articles=selected_articles,
-        article_bodies={
-            article.id: get_article_body(article)
-            for article in selected_articles
-        },
+        article_bodies=article_bodies,
         edition_date=date.today().isoformat(),
     )
 

@@ -36,6 +36,40 @@ def test_detect_language_uses_telugu_article_body():
         body="తెలుగు వార్తా కథనం",
     ) == "te"
 
+def test_news_category_classification_uses_specific_context(app):
+    from extensions import db
+    from models import Category
+    from services.news_collector import classify_category
+
+    categories = [
+        ("World", "ప్రపంచం", "world"),
+        ("Entertainment", "వినోదం", "entertainment"),
+        ("National", "జాతీయం", "national"),
+        ("Sports", "క్రీడలు", "sports"),
+        ("Telangana", "తెలంగాణ", "telangana"),
+    ]
+
+    with app.app_context():
+        db.session.add_all(
+            Category(name_en=name, name_te=name_te, slug=slug)
+            for name, name_te, slug in categories
+        )
+        db.session.flush()
+
+        cases = [
+            ("అమెరికా అధ్యక్షుడు కీలక ప్రకటన చేశారు", "World"),
+            ("తెలుగు సినిమా ట్రైలర్ విడుదల", "Entertainment"),
+            ("ప్రపంచం గురించి తాజా వార్త", "National"),
+            ("కేంద్ర ప్రభుత్వం కొత్త నిర్ణయం", "National"),
+            ("క్రికెట్ మ్యాచ్‌లో టీమిండియా విజయం", "Sports"),
+            ("హైదరాబాద్‌లో తెలంగాణ ప్రభుత్వం కీలక ప్రకటన", "Telangana"),
+        ]
+
+        for title, expected_category in cases:
+            category = classify_category(title)
+            assert category is not None
+            assert category.name_en == expected_category
+
 def test_article_public_telugu_fields_hide_english_only_content():
     from models.article import Article
 
@@ -243,6 +277,22 @@ def test_newspaper_body_omits_publisher_promotions():
     assert "preferred source" not in body
     assert "Also Read" not in body
 
+def test_newspaper_body_removes_repeated_gold_price_sentence():
+    from services.newspaper_pdf import clean_article_body
+
+    repeated_price = (
+        "హైదరాబాద్‌లో 24 క్యారెట్ల బంగారం ధర గ్రాముకు రూ. 13,991గా ఉంది."
+    )
+    other_city = (
+        "విజయవాడలో 24 క్యారెట్ల బంగారం ధర గ్రాముకు రూ. 13,991గా ఉంది."
+    )
+    body = clean_article_body(
+        f"{repeated_price}\n\n{other_city}\n\n{repeated_price}"
+    )
+
+    assert body.count(repeated_price) == 1
+    assert other_city in body
+
 def test_newspaper_body_omits_google_promo_split_across_lines():
     from services.newspaper_pdf import get_article_body
 
@@ -308,12 +358,205 @@ def test_newspaper_body_removes_promotions_without_blank_paragraphs():
 
 def test_newspaper_pdf_uses_justified_body_and_left_headline():
     from reportlab.lib.enums import TA_JUSTIFY, TA_LEFT
-    from services.newspaper_pdf import get_styles
+    from reportlab.lib.pagesizes import A4
+    from services.newspaper_pdf import (
+        COLUMN_COUNT,
+        PAGE_HEIGHT,
+        PAGE_WIDTH,
+        MARGIN,
+        COLUMN_GAP,
+        TELUGU_BOLD_FONT_PATH,
+        TELUGU_FONT_PATH,
+        get_styles,
+    )
 
     styles = get_styles()
 
+    assert TELUGU_FONT_PATH.name == "NotoSerifTelugu-Regular.ttf"
+    assert TELUGU_BOLD_FONT_PATH.name == "NotoSerifTelugu-Bold.ttf"
     assert styles["NewsBody"].alignment == TA_JUSTIFY
+    assert styles["NewsBody"].fontSize == 9
+    assert styles["NewsBody"].leading == 12
+    assert styles["NewsBody"].fontName == "VSTV6Telugu"
     assert styles["NewsHeadline"].alignment == TA_LEFT
+    assert styles["NewsHeadline"].fontSize == 13
+    assert styles["NewsHeadline"].leading == 17
+    assert styles["NewsLeadHeadline"].fontSize == 24
+    assert styles["NewsLeadHeadline"].leading == 32
+    assert styles["NewsSummary"].fontName == "VSTV6Telugu"
+    assert styles["NewsSummary"].fontSize == 9
+    assert styles["NewsSummary"].leading == 12
+    assert styles["NewsEdition"].fontSize == 8
+    assert styles["NewsKicker"].fontName == "VSTV6TeluguBold"
+    assert COLUMN_COUNT == 2
+    assert (PAGE_WIDTH, PAGE_HEIGHT) == A4
+    assert MARGIN == pytest.approx(28.35, abs=0.1)
+    assert COLUMN_GAP == pytest.approx(14.17, abs=0.1)
+
+
+def test_newspaper_pdf_images_fit_medium_frames_without_cropping(monkeypatch):
+    from io import BytesIO
+    import services.newspaper_pdf as newspaper_pdf
+
+    class ImageReaderStub:
+        def __init__(self, _buffer):
+            pass
+
+        def getSize(self):
+            return 200, 100
+
+    class CanvasStub:
+        def drawImage(self, image, x, y, width, height, mask):
+            self.drawn = (image, x, y, width, height, mask)
+
+    monkeypatch.setattr(newspaper_pdf, "ImageReader", ImageReaderStub)
+    image = newspaper_pdf.ContainedImage(BytesIO(b"image"), 100, 40)
+    image.canv = CanvasStub()
+
+    image.draw()
+
+    _, x, y, width, height, mask = image.canv.drawn
+    assert (x, y, width, height) == pytest.approx((10, 0, 80, 40))
+    assert mask == "auto"
+
+
+def test_newspaper_pdf_uses_two_equal_columns():
+    from services.newspaper_pdf import COLUMN_COUNT, COLUMN_GAP
+
+    assert COLUMN_COUNT == 2
+    assert COLUMN_GAP > 0
+
+
+def test_newspaper_split_article_body_keeps_complete_copy():
+    from services.newspaper_pdf import split_article_body
+
+    body = ("తెలుగు వార్తా వాక్యం. " * 30).strip()
+    opening, continuation = split_article_body(body, max_words=20)
+
+    assert len(opening.split()) <= 20
+    assert len((opening + " " + continuation).split()) == len(body.split())
+    assert continuation
+
+def test_newspaper_preview_renders_full_story_body(app, monkeypatch):
+    import routes.newspaper as newspaper
+
+    full_body = (
+        "తెలుగు వార్త శీర్షిక\n\n"
+        "తెలుగు మొదటి పేరా.\n\n"
+        + ("తెలుగు పూర్తి కథనం. " * 20)
+        + "చివరి వాక్యం."
+    )
+    article = SimpleNamespace(
+        id=42,
+        telugu_title="తెలుగు వార్త శీర్షిక",
+        title_te="తెలుగు వార్త శీర్షిక",
+        body_te=full_body,
+        body_en=None,
+        image_url=None,
+        category=SimpleNamespace(name_te="తెలంగాణ", name_en="Telangana"),
+    )
+    second_article = SimpleNamespace(
+        id=43,
+        telugu_title="మరో తెలుగు వార్త",
+        title_te="మరో తెలుగు వార్త",
+        body_te="మరో వార్తా కథనం.",
+        body_en=None,
+        image_url=None,
+        category=SimpleNamespace(name_te="జాతీయం", name_en="National"),
+    )
+    monkeypatch.setattr(newspaper, "_require_admin", lambda: None)
+    monkeypatch.setattr(
+        newspaper,
+        "_get_selected_articles",
+        lambda ids: [article, second_article],
+    )
+
+    with app.test_request_context(
+        "/admin/newspaper/preview",
+        method="POST",
+        data={"article_ids": ["42"]},
+    ):
+        html = newspaper.preview.__wrapped__()
+
+    assert "story-body" in html
+    assert "తెలుగు మొదటి పేరా." in html
+    assert "చివరి వాక్యం." in html
+    assert "తెలుగు మొదటి పేరా.\n\nతెలుగు పూర్తి కథనం." in html
+    assert html.count("తెలుగు వార్త శీర్షిక") == 1
+    assert "size: A4 portrait" in html
+    assert ".ticker," in html
+    assert ".site-header,\n    .ticker," in html
+    assert "margin: 0;" in html
+    assert "width: 210mm;" in html
+    assert "min-height: 297mm;" in html
+    assert "padding: 10mm;" in html
+    assert "height: 40mm;" in html
+    assert "VSTV6 DIGITAL MEDIA · TELANGANA" in html
+    assert "Today's Top Stories" in html
+    assert ".lead-story {" in html
+    assert ".lead-story .story-intro {" in html
+    assert "grid-template-columns: minmax(0, 1fr) 62mm;" in html
+    assert ".story-body {" in html
+    assert ".lead-story .story-body {" in html
+    assert ".newspaper-grid {" in html
+    assert ".story-card {" in html
+    assert "class=\"story-label\"" in html
+    assert "జాతీయం" in html
+    assert ".newspaper-content-flow {\n    column-count: 2;" in html
+    assert "column-fill: balance;" in html
+    assert "column-rule: .3pt solid #cbd5e1;" in html
+    assert "max-height: 40mm;" in html
+    assert "max-height: 36mm;" in html
+    assert "object-fit: contain;" in html
+    assert "page-break-inside: avoid" in html
+    assert ".edition-bar {\n    display: flex;" in html
+    assert "VSTV6 Digital Media · Telangana" in html
+    assert 'id="edition-date" datetime="2026-' in html
+    assert "margin: 0;" in html
+    assert ".newspaper-footer {\n        display: block !important;" in html
+    assert "VSTV6 DIGITAL MEDIA · TELANGANA" in html
+    assert "font-size: 24pt;" in html
+    assert "font-size: 13pt;" in html
+    assert "font-size: 9pt;" in html
+    assert "page-break-inside: avoid;" in html
+    assert "NotoSerifTelugu-Regular.ttf" in html
+    assert "NotoSerifTelugu-Bold.ttf" in html
+    assert 'font-family: "VSTV6 Noto Serif Telugu", "Nirmala UI", serif;' in html
+    assert "VSTV6 Digital Media · Telangana" in html
+    assert "ప్రధాన వార్త | TOP STORY" in html
+    assert 'action="/admin/newspaper/download-pdf"' not in html
+    assert "Download PDF" not in html
+    assert "Download HTML" not in html
+    assert "function downloadPreviewHtml()" not in html
+    assert "Save &amp; Print" in html
+    assert 'onclick="window.print()"' in html
+
+def test_newspaper_download_returns_pdf_attachment(app, monkeypatch):
+    from io import BytesIO
+    import routes.newspaper as newspaper
+
+    monkeypatch.setattr(newspaper, "_require_admin", lambda: None)
+    monkeypatch.setattr(
+        newspaper,
+        "_get_selected_articles",
+        lambda ids: [SimpleNamespace(id=42)],
+    )
+    monkeypatch.setattr(
+        newspaper,
+        "create_newspaper_pdf",
+        lambda articles, edition_date=None: BytesIO(b"%PDF-test"),
+    )
+
+    with app.test_request_context(
+        "/admin/newspaper/download-pdf",
+        method="POST",
+        data={"article_ids": ["42"]},
+    ):
+        response = newspaper.download_pdf.__wrapped__()
+
+    assert response.status_code == 200
+    assert response.mimetype == "application/pdf"
+    assert "attachment" in response.headers["Content-Disposition"]
 
 def test_collect_rss_cli_uses_saving_mode(monkeypatch, tmp_path):
     from app import create_app
