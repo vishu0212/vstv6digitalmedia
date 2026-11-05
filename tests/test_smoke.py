@@ -87,6 +87,7 @@ def test_public_news_pages_only_show_telugu_headline_and_body(
     monkeypatch,
 ):
     from datetime import datetime, timezone
+    from urllib.parse import quote
 
     from app import create_app
     from config import Config
@@ -120,7 +121,7 @@ def test_public_news_pages_only_show_telugu_headline_and_body(
             valid_article = Article(
                 title_en="Telugu story",
                 title_te="తెలుగు వార్త శీర్షిక",
-                slug="telugu-story",
+                slug="తెలుగు-వార్త-శీర్షిక",
                 summary_en="English teaser",
                 summary_te="తెలుగు వార్తా సారాంశం",
                 body_en="English body",
@@ -156,7 +157,10 @@ def test_public_news_pages_only_show_telugu_headline_and_body(
     assert "తెలుగు వార్త శీర్షిక".encode() in home.data
     assert "తెలుగు headline".encode() in home.data
     assert "English teaser".encode() not in home.data
-    assert client.get("/news/telugu-story").status_code == 200
+    slug = "తెలుగు-వార్త-శీర్షిక"
+    encoded_slug = quote(slug, safe="")
+    assert client.get(f"/news/{encoded_slug}").status_code == 200
+    assert client.get(f"/news/{quote(encoded_slug, safe='')}").status_code == 200
     mixed_detail = client.get("/news/mixed-story")
     assert mixed_detail.status_code == 200
     assert "తెలుగు కథనం with English words.".encode() in mixed_detail.data

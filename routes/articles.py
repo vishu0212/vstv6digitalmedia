@@ -1,4 +1,6 @@
 
+from urllib.parse import unquote
+
 from flask import abort, Blueprint, render_template
 from models import Article
 
@@ -8,6 +10,7 @@ articles_bp = Blueprint("articles", __name__)
 @articles_bp.get("/news/<slug>")
 def detail(slug):
     """Display a published news article by its slug."""
+    slug = unquote(slug)
 
     article = Article.query.filter_by(
         slug=slug,
