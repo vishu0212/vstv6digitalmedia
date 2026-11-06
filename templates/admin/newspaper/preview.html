@@ -827,7 +827,7 @@
 
             <p>VSTV6 Digital Media · Telangana</p>
 
-            <p>వార్తలు · విశేషాలు · ప్రజల గొంతుక</p>
+            <p>నిత్యం నూతన వార్తలు – నిరంతరం ప్రజల కోసం</p>
         </section>
 
         {% if selected_articles %}
@@ -881,9 +881,7 @@
                     {% for article in selected_articles[1:] %}
                     <article class="story-card">
                         <div class="story-intro{% if article.image_url %} has-image{% endif %}">
-                            <span class="story-label">
-                                {{ article.category.name_te if article.category and article.category.name_te else 'వార్తలు' }}
-                            </span>
+
                             <h3>{{ article.telugu_title }}</h3>
 
                             {% if article.image_url %}
