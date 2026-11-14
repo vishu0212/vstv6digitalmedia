@@ -558,16 +558,15 @@ def test_newspaper_download_returns_pdf_attachment(app, monkeypatch):
     assert response.mimetype == "application/pdf"
     assert "attachment" in response.headers["Content-Disposition"]
 
-def test_collect_rss_cli_uses_saving_mode(monkeypatch, tmp_path):
-    from app import create_app
+def test_collect_rss_cli_uses_saving_mode(app, monkeypatch):
+    from models.rss_run import RssRun
     import services.news_collector as news_collector
 
-    monkeypatch.setenv("SECRET_KEY", "test-secret-only")
-    monkeypatch.setenv(
-        "DATABASE_URL",
-        "sqlite:///" + str(tmp_path / "cli-test.db"),
+    monkeypatch.setattr(
+        news_collector,
+        "RSS_FEEDS",
+        ["https://feeds.example/rss"],
     )
-
     dry_run_values = []
     monkeypatch.setattr(
         news_collector,
@@ -575,7 +574,6 @@ def test_collect_rss_cli_uses_saving_mode(monkeypatch, tmp_path):
         lambda dry_run=False: dry_run_values.append(dry_run) or 2,
     )
 
-    app = create_app()
     result = app.test_cli_runner().invoke(
         app.cli,
         ["collect-rss"],
@@ -584,6 +582,56 @@ def test_collect_rss_cli_uses_saving_mode(monkeypatch, tmp_path):
     assert result.exit_code == 0
     assert "New draft articles: 2" in result.output
     assert dry_run_values == [False]
+    with app.app_context():
+        run = RssRun.query.one()
+        assert run.status == "success"
+        assert run.feeds_checked == 1
+        assert run.created == 2
+        assert run.finished_at is not None
+
+def test_collect_rss_cli_records_and_reports_failed_run(app, monkeypatch):
+    from models.rss_run import RssRun
+    import services.news_collector as news_collector
+
+    monkeypatch.setattr(
+        news_collector,
+        "RSS_FEEDS",
+        ["https://feeds.example/rss"],
+    )
+
+    def fail_collection(dry_run=False):
+        raise RuntimeError("RSS database unavailable")
+
+    monkeypatch.setattr(news_collector, "collect_all_feeds", fail_collection)
+
+    result = app.test_cli_runner().invoke(app.cli, ["collect-rss"])
+
+    assert result.exit_code != 0
+    with app.app_context():
+        run = RssRun.query.one()
+        assert run.status == "failed"
+        assert run.errors == 1
+        assert run.error_message == "RSS database unavailable"
+        assert run.finished_at is not None
+
+def test_collect_rss_cli_fails_when_no_feeds_are_configured(
+    app,
+    monkeypatch,
+):
+    from models.rss_run import RssRun
+    import services.news_collector as news_collector
+
+    monkeypatch.setattr(news_collector, "RSS_FEEDS", [])
+
+    result = app.test_cli_runner().invoke(app.cli, ["collect-rss"])
+
+    assert result.exit_code != 0
+    with app.app_context():
+        run = RssRun.query.one()
+        assert run.status == "failed"
+        assert run.feeds_checked == 0
+        assert run.errors == 1
+        assert "RSS_FEEDS is empty" in run.error_message
 
 def test_rss_image_extractor_finds_images_embedded_in_feed_content():
     from services.news_collector import get_image_url

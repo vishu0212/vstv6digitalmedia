@@ -1598,6 +1598,37 @@ def collect_all_feeds(dry_run: bool = False) -> int:
 
 def collect_feeds(dry_run: bool = False) -> int:
 
-    """Compatibility alias for existing application routes."""
+    """Collect configured feeds and persist an observable run record."""
+    from models.rss_run import RssRun
 
-    return collect_all_feeds(dry_run=dry_run)
+    run = RssRun(
+        status="running",
+        feeds_checked=len(RSS_FEEDS),
+    )
+    db.session.add(run)
+    db.session.commit()
+    run_id = run.id
+
+    try:
+        if not RSS_FEEDS:
+            raise RuntimeError(
+                "RSS_FEEDS is empty or missing from the environment."
+            )
+
+        collected = collect_all_feeds(dry_run=dry_run)
+        run = db.session.get(RssRun, run_id)
+        run.created = 0 if dry_run else collected
+        run.status = "success"
+        run.finished_at = datetime.now(timezone.utc)
+        db.session.commit()
+        return collected
+    except Exception as exc:
+        db.session.rollback()
+        failed_run = db.session.get(RssRun, run_id)
+        if failed_run is not None:
+            failed_run.status = "failed"
+            failed_run.errors = 1
+            failed_run.error_message = str(exc)[:4000]
+            failed_run.finished_at = datetime.now(timezone.utc)
+            db.session.commit()
+        raise
