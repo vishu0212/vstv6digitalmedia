@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import re
 from html.parser import HTMLParser
 from urllib.parse import urljoin, urlparse
 
@@ -21,6 +20,7 @@ USER_AGENT = (
 REQUEST_TIMEOUT = 15
 MAX_DOWNLOAD_BYTES = 3 * 1024 * 1024
 MIN_ARTICLE_CHARACTERS = 200
+PERMANENT_HTTP_ERRORS = {404, 410}
 
 IMAGE_METADATA_KEYS = {
     "og:image",
@@ -204,28 +204,45 @@ def _select_image(
     return None
 
 
-def extract_article_page(
-    url: str | None,
-) -> tuple[str | None, str | None]:
-    """
-    Return readable article text and a featured-image URL.
+def _validate_article_url(url: str | None) -> bool:
+    """Validate article URL before making an HTTP request."""
 
-    The image can still be returned when article text extraction fails.
-    """
-    if not url:
-        return None, None
+    if not url or not isinstance(url, str):
+        return False
 
     try:
         parsed = urlparse(url)
     except (TypeError, ValueError):
-        return None, None
+        return False
 
-    if (
-        parsed.scheme.lower() not in {"http", "https"}
-        or not parsed.hostname
-        or parsed.username
-        or parsed.password
-    ):
+    return (
+        parsed.scheme.lower() in {"http", "https"}
+        and bool(parsed.hostname)
+        and not parsed.username
+        and not parsed.password
+    )
+
+
+def extract_article_page(
+    url: str | None,
+) -> tuple[str | None, str | None]:
+    """
+    Return readable article text and featured-image URL.
+
+    Handles permanent HTTP errors separately.
+    One unavailable article will not interrupt RSS processing.
+
+    Returns:
+        (article_text, image_url)
+
+        Both values can be None if extraction fails.
+        Image URL can still be returned if text extraction fails.
+    """
+    if not _validate_article_url(url):
+        logger.warning(
+            "Invalid article URL: %s",
+            url,
+        )
         return None, None
 
     try:
@@ -242,6 +259,15 @@ def extract_article_page(
             stream=True,
             allow_redirects=True,
         ) as response:
+            if response.status_code in PERMANENT_HTTP_ERRORS:
+                logger.info(
+                    "Article permanently unavailable "
+                    "(HTTP %s): %s",
+                    response.status_code,
+                    url,
+                )
+                return None, None
+
             response.raise_for_status()
 
             content_type = response.headers.get(
@@ -300,9 +326,14 @@ def extract_article_page(
 
         image_url = _select_image(parser, page_url)
 
-        if not image_url:
+        if image_url:
+            logger.debug(
+                "Featured image found: %s",
+                image_url,
+            )
+        else:
             logger.info(
-                "No image metadata or HTML image found: %s",
+                "No featured image found: %s",
                 page_url,
             )
 
@@ -315,18 +346,67 @@ def extract_article_page(
         )
 
         if not extracted:
+            logger.info(
+                "No readable article text extracted: %s",
+                page_url,
+            )
             return None, image_url
 
         text = extracted.strip()
 
         if len(text) < MIN_ARTICLE_CHARACTERS:
             logger.info(
-                "Article text too short: %s",
+                "Article text too short (%s characters): %s",
+                len(text),
                 page_url,
             )
             return None, image_url
 
+        logger.info(
+            "Article extraction successful: "
+            "%s (%s characters)",
+            page_url,
+            len(text),
+        )
+
         return text, image_url
+
+    except requests.HTTPError as exc:
+        status_code = (
+            exc.response.status_code
+            if exc.response is not None
+            else None
+        )
+
+        if status_code in PERMANENT_HTTP_ERRORS:
+            logger.info(
+                "Article unavailable (HTTP %s): %s",
+                status_code,
+                url,
+            )
+        else:
+            logger.warning(
+                "HTTP error extracting article %s: %s",
+                url,
+                exc,
+            )
+
+        return None, None
+
+    except requests.Timeout:
+        logger.warning(
+            "Article request timed out: %s",
+            url,
+        )
+        return None, None
+
+    except requests.ConnectionError as exc:
+        logger.warning(
+            "Article connection failed: %s - %s",
+            url,
+            exc,
+        )
+        return None, None
 
     except requests.RequestException as exc:
         logger.warning(
