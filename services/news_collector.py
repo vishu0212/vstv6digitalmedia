@@ -1321,8 +1321,9 @@ def collect_feed(feed_url: str, dry_run: bool = False) -> int:
             if len(extracted_text) < MINIMUM_ARTICLE_LENGTH:
                 if len(rss_content) >= MIN_RSS_FALLBACK_LENGTH:
                     extracted_text = rss_content
-                    logger.warning(
-                        "Using RSS content fallback (%s characters): %s",
+                    logger.info(
+                        "Publisher page unavailable or too short; using "
+                        "RSS content fallback (%s characters): %s",
                         len(extracted_text),
                         source_url,
                     )

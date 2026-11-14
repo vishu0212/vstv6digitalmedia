@@ -659,6 +659,7 @@ def test_article_page_extractor_reads_featured_image_metadata(
     ).encode()
 
     class FakeResponse:
+        status_code = 200
         headers = {"Content-Type": "text/html"}
         encoding = "utf-8"
         url = "https://news.example/redirected/story"
@@ -692,6 +693,48 @@ def test_article_page_extractor_reads_featured_image_metadata(
 
     assert text == ("తెలుగు వార్త " * 30).strip()
     assert image_url == "https://news.example/images/featured.jpg"
+
+def test_article_page_extractor_rejects_invalid_url(monkeypatch):
+    import services.article_extractor as extractor
+
+    def unexpected_request(*args, **kwargs):
+        raise AssertionError("Invalid URLs must not be requested")
+
+    monkeypatch.setattr(extractor.requests, "get", unexpected_request)
+
+    assert extractor.extract_article_page("javascript:alert(1)") == (
+        None,
+        None,
+    )
+
+def test_article_page_extractor_skips_permanently_missing_page(
+    monkeypatch,
+):
+    import services.article_extractor as extractor
+
+    class MissingResponse:
+        status_code = 410
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return None
+
+        def raise_for_status(self):
+            raise AssertionError(
+                "Permanent HTTP errors should be handled first"
+            )
+
+    monkeypatch.setattr(
+        extractor.requests,
+        "get",
+        lambda *args, **kwargs: MissingResponse(),
+    )
+
+    assert extractor.extract_article_page(
+        "https://news.example/gone"
+    ) == (None, None)
 
 def test_rss_collection_saves_and_backfills_article_page_image(
     app,
@@ -748,3 +791,58 @@ def test_rss_collection_saves_and_backfills_article_page_image(
 
         assert collector.collect_feed("https://feeds.example/rss") == 0
         assert article.image_url == image_url
+
+def test_rss_collection_saves_draft_when_article_page_is_unavailable(
+    app,
+    monkeypatch,
+    caplog,
+):
+    from extensions import db
+    from models import Article, Category, User
+    import services.news_collector as collector
+
+    article_url = "https://news.example/gone"
+    rss_content = "తెలుగు వార్తల సమాచారం ప్రజలకు అందించింది. " * 8
+    entry = {
+        "title": "తెలంగాణ తాజా వార్త",
+        "summary": rss_content,
+        "link": article_url,
+    }
+
+    with app.app_context():
+        author = User(
+            email="rss-fallback-editor@example.com",
+            display_name="తెలుగు సంపాదకుడు",
+            password_hash="test-hash",
+            role="editor",
+        )
+        category = Category(
+            name_en="National",
+            name_te="జాతీయం",
+            slug="national",
+        )
+        db.session.add_all([author, category])
+        db.session.commit()
+
+        monkeypatch.setattr(
+            collector.feedparser,
+            "parse",
+            lambda *args, **kwargs: SimpleNamespace(
+                entries=[entry],
+                bozo=False,
+                get=lambda key, default=None: default,
+            ),
+        )
+        monkeypatch.setattr(
+            collector,
+            "extract_article_page",
+            lambda url: (None, None),
+        )
+
+        with caplog.at_level("INFO"):
+            assert collector.collect_feed("https://feeds.example/rss") == 1
+
+        article = Article.query.filter_by(source_url=article_url).one()
+        assert article.status == "draft"
+        assert article.body_te == rss_content.strip()
+        assert "Publisher page unavailable or too short" in caplog.text
