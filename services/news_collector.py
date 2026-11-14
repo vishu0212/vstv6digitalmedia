@@ -83,6 +83,8 @@ MINIMUM_ARTICLE_LENGTH = 200
 MAX_TITLE_LENGTH = 220
 
 MAX_SUMMARY_LENGTH = 500
+MAX_RSS_BODY_LENGTH = 12000
+MIN_RSS_FALLBACK_LENGTH = 40
 
 MAX_SOURCE_URL_LENGTH = 1000
 
@@ -216,7 +218,7 @@ CATEGORY_KEYWORDS = {
 
         "south korea", "global summit", "middle east",
 
-        "అమెరికా", "అంతర్జాతీయ", "విదేశీ", "ప్రపంచం",
+        "అమెరికా", "అంతర్జాతీయ", "విదేశీ",
 
         "వెనిజులా", "ప్రతిపక్ష నేత", "విదేశాంగ శాఖ",
 
@@ -1104,15 +1106,79 @@ def get_source_name(entry, feed) -> str:
 
     return source_name[:200]
 
+class _RSSTextParser(HTMLParser):
+    """Convert HTML embedded in RSS descriptions into readable text."""
+
+    BLOCK_TAGS = {
+        "p", "div", "br", "li", "h1", "h2", "h3", "h4",
+        "section", "article", "blockquote",
+    }
+
+    IGNORED_TAGS = {"script", "style", "noscript"}
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.parts = []
+        self._ignored_depth = 0
+
+    def handle_starttag(self, tag, attrs):
+        tag = tag.lower()
+        if tag in self.IGNORED_TAGS:
+            self._ignored_depth += 1
+        elif not self._ignored_depth and tag in self.BLOCK_TAGS:
+            self.parts.append("\n")
+
+    def handle_endtag(self, tag):
+        tag = tag.lower()
+        if tag in self.IGNORED_TAGS and self._ignored_depth:
+            self._ignored_depth -= 1
+        elif not self._ignored_depth and tag in self.BLOCK_TAGS:
+            self.parts.append("\n")
+
+    def handle_data(self, data):
+        if not self._ignored_depth:
+            self.parts.append(data)
+
+
+def _rss_value_to_text(value: object) -> str:
+    """Strip HTML from an RSS field while retaining paragraph boundaries."""
+    if value is None:
+        return ""
+
+    parser = _RSSTextParser()
+    try:
+        parser.feed(str(value))
+        parser.close()
+        return clean_article_body("".join(parser.parts))
+    except Exception:
+        logger.debug("Could not parse RSS HTML field", exc_info=True)
+        return clean_article_body(clean_text(value))
+
+
+def get_rss_content(entry) -> str:
+    """Return the longest useful RSS text available for body fallback."""
+    candidates = []
+
+    for item in entry.get("content", []) or []:
+        candidates.append(item.get("value"))
+
+    candidates.extend([
+        entry.get("summary"),
+        entry.get("description"),
+    ])
+
+    best = ""
+    for value in candidates:
+        text = _rss_value_to_text(value)
+        if len(text) > len(best):
+            best = text
+
+    return best[:MAX_RSS_BODY_LENGTH]
+
+
 def get_rss_summary(entry) -> str:
-
-    """Extract a summary from an RSS entry."""
-
-    return clean_text(
-
-        entry.get("summary") or entry.get("description")
-
-    )
+    """Extract a readable RSS summary, preferring the longest field."""
+    return get_rss_content(entry)[:MAX_SUMMARY_LENGTH]
 
 # ============================================================
 
@@ -1238,31 +1304,40 @@ def collect_feed(feed_url: str, dry_run: bool = False) -> int:
 
                 continue
 
-            # Extract article text.
+            # Read RSS metadata BEFORE requesting the original article page.
+            # RSS data remains usable even when the publisher returns HTTP 410.
+            rss_content = get_rss_content(entry)
+            rss_summary = rss_content[:MAX_SUMMARY_LENGTH]
+            rss_image_url = get_image_url(entry)
 
+            # Try the publisher page first for the full article body.
             extracted_page_text, page_image_url = extract_article_page(
-
                 source_url
-
             )
-
             extracted_text = clean_article_body(extracted_page_text)
 
+            # If the page is unavailable or extraction is too short, use the
+            # RSS content as a clearly identifiable draft fallback.
             if len(extracted_text) < MINIMUM_ARTICLE_LENGTH:
+                if len(rss_content) >= MIN_RSS_FALLBACK_LENGTH:
+                    extracted_text = rss_content
+                    logger.warning(
+                        "Using RSS content fallback (%s characters): %s",
+                        len(extracted_text),
+                        source_url,
+                    )
+                else:
+                    logger.info(
+                        "Skipping article: page text (%s chars) and RSS "
+                        "fallback (%s chars) are insufficient: %s",
+                        len(extracted_text),
+                        len(rss_content),
+                        source_url,
+                    )
+                    continue
 
-                logger.info(
-
-                    "Skipping short article: %s (%s characters)",
-
-                    source_url,
-
-                    len(extracted_text),
-
-                )
-
-                continue
-
-            rss_summary = get_rss_summary(entry)
+            if not rss_summary:
+                rss_summary = extracted_text[:MAX_SUMMARY_LENGTH]
 
             # Detect language.
 
@@ -1441,8 +1516,6 @@ def collect_feed(feed_url: str, dry_run: bool = False) -> int:
             article.source_name = get_source_name(entry, feed)
 
             article.source_url = source_url
-
-            rss_image_url = get_image_url(entry)
 
             page_image_url = normalize_source_url(page_image_url)
 
