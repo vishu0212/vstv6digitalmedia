@@ -1,6 +1,7 @@
 import os
 import pytest
 from types import SimpleNamespace
+from xml.etree import ElementTree
 
 @pytest.fixture()
 def app(tmp_path, monkeypatch):
@@ -23,6 +24,7 @@ def test_sitemap(app):
     response = app.test_client().get("/sitemap.xml")
     assert response.status_code == 200
     assert b"urlset" in response.data
+    ElementTree.fromstring(response.data)
 
 def test_login(app):
     assert app.test_client().get("/auth/login").status_code == 200
