@@ -1,0 +1,5 @@
+
+User-agent: *
+Allow: /
+
+Sitemap: https://vstv6digitalmedia.vercel.app/sitemap.xml
